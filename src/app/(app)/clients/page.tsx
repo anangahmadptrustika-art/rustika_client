@@ -5,6 +5,8 @@ import { requireProfile } from "@/lib/auth";
 import { getClients, getProjects } from "@/lib/queries";
 import { can } from "@/lib/rbac";
 import { PageHeader } from "@/components/shared/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
+import { NewClientDialog } from "@/components/clients/new-client-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -25,7 +27,17 @@ export default async function ClientsPage() {
       <PageHeader
         title="Clients"
         description="Daftar seluruh client Rustika Consultant."
-      />
+      >
+        {can(profile.role, "client:manage") && <NewClientDialog />}
+      </PageHeader>
+      {clients.length === 0 ? (
+        <EmptyState
+          icon={Building2}
+          title="Belum ada client"
+          description="Tambahkan client pertama Anda untuk mulai membuat proyek."
+          action={can(profile.role, "client:manage") ? <NewClientDialog /> : undefined}
+        />
+      ) : (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {clients.map((c) => (
           <Card key={c.id}>
@@ -70,6 +82,7 @@ export default async function ClientsPage() {
           </Card>
         ))}
       </div>
+      )}
     </div>
   );
 }

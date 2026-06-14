@@ -14,6 +14,7 @@ import { requireProfile } from "@/lib/auth";
 import {
   getActivities,
   getDashboardStats,
+  getProgressAnalytics,
   getProjects,
 } from "@/lib/queries";
 import { PageHeader } from "@/components/shared/page-header";
@@ -30,7 +31,7 @@ import { Progress } from "@/components/ui/progress";
 import { ProgressAreaChart } from "@/components/charts/progress-area-chart";
 import { StatusDonutChart } from "@/components/charts/status-donut-chart";
 import { DivisionBarChart } from "@/components/charts/division-bar-chart";
-import { demoDivisionProgress, demoMonthlyProgress } from "@/lib/demo-data";
+import { EmptyState } from "@/components/shared/empty-state";
 import {
   PROJECT_STATUSES,
   PROJECT_STATUS_LABELS,
@@ -43,10 +44,11 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const profile = await requireProfile();
-  const [stats, projects, activities] = await Promise.all([
+  const [stats, projects, activities, analytics] = await Promise.all([
     getDashboardStats(),
     getProjects(),
     getActivities(),
+    getProgressAnalytics(),
   ]);
 
   const showFinance = canViewFinance(profile.role);
@@ -90,7 +92,7 @@ export default async function DashboardPage() {
             <CardDescription>Rata-rata progres seluruh proyek per bulan</CardDescription>
           </CardHeader>
           <CardContent>
-            <ProgressAreaChart data={demoMonthlyProgress} />
+            <ProgressAreaChart data={analytics.monthly} />
           </CardContent>
         </Card>
         <Card>
@@ -99,17 +101,25 @@ export default async function DashboardPage() {
             <CardDescription>Distribusi proyek per status</CardDescription>
           </CardHeader>
           <CardContent>
-            <StatusDonutChart data={statusData} />
-            <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-              {statusData
-                .filter((d) => d.value > 0)
-                .map((d) => (
-                  <div key={d.name} className="flex items-center justify-between">
-                    <span className="text-muted-foreground">{d.name}</span>
-                    <span className="font-medium">{d.value}</span>
-                  </div>
-                ))}
-            </div>
+            {projects.length === 0 ? (
+              <p className="py-16 text-center text-sm text-muted-foreground">
+                Belum ada proyek untuk ditampilkan.
+              </p>
+            ) : (
+              <>
+                <StatusDonutChart data={statusData} />
+                <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                  {statusData
+                    .filter((d) => d.value > 0)
+                    .map((d) => (
+                      <div key={d.name} className="flex items-center justify-between">
+                        <span className="text-muted-foreground">{d.name}</span>
+                        <span className="font-medium">{d.value}</span>
+                      </div>
+                    ))}
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -121,7 +131,13 @@ export default async function DashboardPage() {
             <CardDescription>Capaian tiap divisi pekerjaan</CardDescription>
           </CardHeader>
           <CardContent>
-            <DivisionBarChart data={demoDivisionProgress} />
+            {analytics.divisions.length === 0 ? (
+              <p className="py-16 text-center text-sm text-muted-foreground">
+                Belum ada laporan progress per divisi.
+              </p>
+            ) : (
+              <DivisionBarChart data={analytics.divisions} />
+            )}
           </CardContent>
         </Card>
 
@@ -140,6 +156,11 @@ export default async function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent className="space-y-3">
+            {projects.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Belum ada proyek. Klik menu <b>Proyek</b> untuk membuat yang pertama.
+              </p>
+            )}
             {projects.slice(0, 4).map((p) => (
               <Link
                 key={p.id}
@@ -175,6 +196,13 @@ export default async function DashboardPage() {
           <CardDescription>Linimasa aktivitas seluruh proyek</CardDescription>
         </CardHeader>
         <CardContent>
+          {activities.length === 0 ? (
+            <EmptyState
+              icon={FolderKanban}
+              title="Belum ada aktivitas"
+              description="Aktivitas akan muncul saat tim mulai mengunggah dokumen dan memperbarui progress."
+            />
+          ) : (
           <ul className="space-y-4">
             {activities.slice(0, 6).map((a) => (
               <li key={a.id} className="flex gap-3">
@@ -188,6 +216,7 @@ export default async function DashboardPage() {
               </li>
             ))}
           </ul>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -287,6 +287,63 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   };
 }
 
+// ── Progress analytics (dashboard charts from real data) ─────
+export interface ProgressAnalytics {
+  monthly: { month: string; progress: number }[];
+  divisions: { division: string; progress: number }[];
+}
+
+const MONTH_ID = [
+  "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+  "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
+];
+
+export async function getProgressAnalytics(): Promise<ProgressAnalytics> {
+  if (DEMO_MODE) {
+    return { monthly: demo.demoMonthlyProgress, divisions: demo.demoDivisionProgress };
+  }
+
+  const supabase = await sb();
+  const { data } = await supabase
+    .from("project_progress")
+    .select("report_date, progress_percent, division");
+  const rows: { report_date: string; progress_percent: number; division: string | null }[] =
+    data ?? [];
+
+  // Last 6 calendar months — average of progress reports per month.
+  const now = new Date();
+  const buckets: { key: string; label: string }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    buckets.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: MONTH_ID[d.getMonth()] });
+  }
+  const monthly = buckets.map((b) => {
+    const vals = rows
+      .filter((r) => {
+        const d = new Date(r.report_date);
+        return `${d.getFullYear()}-${d.getMonth()}` === b.key;
+      })
+      .map((r) => Number(r.progress_percent));
+    const avg = vals.length ? Math.round(vals.reduce((a, c) => a + c, 0) / vals.length) : 0;
+    return { month: b.label, progress: avg };
+  });
+
+  // Average progress per division.
+  const byDivision = new Map<string, number[]>();
+  for (const r of rows) {
+    if (!r.division) continue;
+    const arr = byDivision.get(r.division) ?? [];
+    arr.push(Number(r.progress_percent));
+    byDivision.set(r.division, arr);
+  }
+  const divisions = Array.from(byDivision.entries()).map(([division, vals]) => ({
+    division,
+    progress: Math.round(vals.reduce((a, c) => a + c, 0) / vals.length),
+  }));
+
+  return { monthly, divisions };
+}
+
 // ── Global search ────────────────────────────────────────────
 export interface SearchResults {
   projects: Project[];

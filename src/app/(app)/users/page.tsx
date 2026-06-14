@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
-import { getProfiles } from "@/lib/queries";
+import { getClients, getProfiles } from "@/lib/queries";
 import { isSuperAdmin } from "@/lib/rbac";
 import { PageHeader } from "@/components/shared/page-header";
+import { NewUserDialog } from "@/components/users/new-user-dialog";
 import {
   Table,
   TableBody,
@@ -26,14 +27,16 @@ export default async function UsersPage() {
   const profile = await requireProfile();
   if (!isSuperAdmin(profile.role)) redirect("/dashboard");
 
-  const users = await getProfiles();
+  const [users, clients] = await Promise.all([getProfiles(), getClients()]);
 
   return (
     <div>
       <PageHeader
         title="Manajemen Pengguna"
         description="Kelola akun, peran, dan status pengguna portal."
-      />
+      >
+        <NewUserDialog clients={clients} />
+      </PageHeader>
       <div className="rounded-xl border">
         <Table>
           <TableHeader>
