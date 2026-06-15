@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ProjectStatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Stagger, StaggerItem } from "@/components/motion/motion-primitives";
 import { formatDate } from "@/lib/utils";
 
 export default async function PortalHome({
@@ -38,29 +39,35 @@ export default async function PortalHome({
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <Card>
-          <CardContent className="flex flex-col items-center gap-1 p-4 text-center">
-            <FolderKanban className="h-5 w-5 text-primary" />
-            <span className="text-2xl font-bold">{projects.length}</span>
-            <span className="text-xs text-muted-foreground">Total Proyek</span>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex flex-col items-center gap-1 p-4 text-center">
-            <Gauge className="h-5 w-5 text-primary" />
-            <span className="text-2xl font-bold">{avg}%</span>
-            <span className="text-xs text-muted-foreground">Rata-rata Progres</span>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex flex-col items-center gap-1 p-4 text-center">
-            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-            <span className="text-2xl font-bold">{completed}</span>
-            <span className="text-xs text-muted-foreground">Selesai</span>
-          </CardContent>
-        </Card>
-      </div>
+      <Stagger className="grid grid-cols-3 gap-3">
+        <StaggerItem>
+          <Card>
+            <CardContent className="flex flex-col items-center gap-1 p-4 text-center">
+              <FolderKanban className="h-5 w-5 text-primary" />
+              <span className="text-2xl font-bold">{projects.length}</span>
+              <span className="text-xs text-muted-foreground">Total Proyek</span>
+            </CardContent>
+          </Card>
+        </StaggerItem>
+        <StaggerItem>
+          <Card>
+            <CardContent className="flex flex-col items-center gap-1 p-4 text-center">
+              <Gauge className="h-5 w-5 text-primary" />
+              <span className="text-2xl font-bold">{avg}%</span>
+              <span className="text-xs text-muted-foreground">Rata-rata Progres</span>
+            </CardContent>
+          </Card>
+        </StaggerItem>
+        <StaggerItem>
+          <Card>
+            <CardContent className="flex flex-col items-center gap-1 p-4 text-center">
+              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+              <span className="text-2xl font-bold">{completed}</span>
+              <span className="text-xs text-muted-foreground">Selesai</span>
+            </CardContent>
+          </Card>
+        </StaggerItem>
+      </Stagger>
 
       <div>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -73,10 +80,11 @@ export default async function PortalHome({
             description="Proyek Anda akan tampil di sini begitu tim memulainya."
           />
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <Stagger className="grid gap-3 sm:grid-cols-2">
             {projects.map((p) => (
-              <Link key={p.id} href={`/portal/${token}/p/${p.id}`} className="group block">
-                <Card className="h-full transition-all hover:border-primary/40 hover:shadow-md">
+              <StaggerItem key={p.id}>
+              <Link href={`/portal/${token}/p/${p.id}`} className="group block">
+                <Card className="h-full transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
                   <CardContent className="space-y-3 p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -101,8 +109,9 @@ export default async function PortalHome({
                   </CardContent>
                 </Card>
               </Link>
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         )}
       </div>
     </div>

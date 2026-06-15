@@ -9,7 +9,7 @@ import type { ProjectWithRelations } from "@/types/database";
 export function ProjectCard({ project }: { project: ProjectWithRelations }) {
   return (
     <Link href={`/projects/${project.id}`} className="group block">
-      <Card className="h-full transition-all hover:border-primary/40 hover:shadow-md">
+      <Card className="h-full transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
         <CardContent className="flex h-full flex-col gap-4 p-5">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">

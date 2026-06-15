@@ -32,6 +32,7 @@ import { ProgressAreaChart } from "@/components/charts/progress-area-chart";
 import { StatusDonutChart } from "@/components/charts/status-donut-chart";
 import { DivisionBarChart } from "@/components/charts/division-bar-chart";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Stagger, StaggerItem } from "@/components/motion/motion-primitives";
 import {
   PROJECT_STATUSES,
   PROJECT_STATUS_LABELS,
@@ -66,23 +67,35 @@ export default async function DashboardPage() {
       />
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        <StatCard label="Total Project" value={stats.totalProjects} icon={FolderKanban} accent="primary" />
-        <StatCard label="Active Project" value={stats.activeProjects} icon={ActivityIcon} accent="default" />
-        <StatCard label="Completed" value={stats.completedProjects} icon={CheckCircle2} accent="success" />
-        <StatCard label="Avg. Progress" value={`${stats.averageProgress}%`} icon={Gauge} accent="primary" />
-        <StatCard label="Pending Approval" value={stats.pendingApproval} icon={Stamp} accent="warning" />
-        {showFinance ? (
-          <StatCard
-            label="Outstanding Invoice"
-            value={formatCurrency(stats.outstandingInvoice)}
-            icon={Receipt}
-            accent="danger"
-          />
-        ) : (
-          <StatCard label="Aktivitas" value={activities.length} icon={Clock} accent="default" />
-        )}
-      </div>
+      <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+        <StaggerItem>
+          <StatCard label="Total Project" value={stats.totalProjects} icon={FolderKanban} accent="primary" />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard label="Active Project" value={stats.activeProjects} icon={ActivityIcon} accent="default" />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard label="Completed" value={stats.completedProjects} icon={CheckCircle2} accent="success" />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard label="Avg. Progress" value={`${stats.averageProgress}%`} icon={Gauge} accent="primary" />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard label="Pending Approval" value={stats.pendingApproval} icon={Stamp} accent="warning" />
+        </StaggerItem>
+        <StaggerItem>
+          {showFinance ? (
+            <StatCard
+              label="Outstanding Invoice"
+              value={formatCurrency(stats.outstandingInvoice)}
+              icon={Receipt}
+              accent="danger"
+            />
+          ) : (
+            <StatCard label="Aktivitas" value={activities.length} icon={Clock} accent="default" />
+          )}
+        </StaggerItem>
+      </Stagger>
 
       {/* Charts */}
       <div className="grid gap-4 lg:grid-cols-3">
