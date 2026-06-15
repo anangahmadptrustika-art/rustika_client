@@ -42,3 +42,31 @@ export async function createClientRecord(
   revalidatePath("/clients");
   return { ok: true, message: "Client berhasil ditambahkan." };
 }
+
+export async function deleteClient(clientId: string): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!can(profile?.role, "client:manage")) {
+    return { ok: false, message: "Anda tidak memiliki izin menghapus client." };
+  }
+  if (DEMO_MODE) return { ok: true, message: "Client dihapus (mode demo)." };
+
+  const supabase = await createClient();
+
+  // A client with projects cannot be deleted (FK restrict) — explain clearly.
+  const { count } = await supabase
+    .from("projects")
+    .select("*", { count: "exact", head: true })
+    .eq("client_id", clientId);
+  if ((count ?? 0) > 0) {
+    return {
+      ok: false,
+      message: `Tidak bisa dihapus: client masih memiliki ${count} proyek. Hapus proyeknya dulu.`,
+    };
+  }
+
+  const { error } = await supabase.from("clients").delete().eq("id", clientId);
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/clients");
+  return { ok: true, message: "Client berhasil dihapus." };
+}

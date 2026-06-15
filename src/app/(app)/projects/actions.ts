@@ -51,6 +51,21 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
   return { ok: true, message: "Proyek berhasil dibuat." };
 }
 
+export async function deleteProject(projectId: string): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!can(profile?.role, "project:delete")) {
+    return { ok: false, message: "Hanya Super Admin yang dapat menghapus proyek." };
+  }
+  if (DEMO_MODE) return { ok: true, message: "Proyek dihapus (mode demo)." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("projects").delete().eq("id", projectId);
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/projects");
+  return { ok: true, message: "Proyek berhasil dihapus." };
+}
+
 export async function updateProjectStatus(
   projectId: string,
   status: ProjectStatus

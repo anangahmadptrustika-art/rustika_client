@@ -39,6 +39,7 @@ import { ApprovalSection } from "@/components/projects/approval-section";
 import { DiscussionThread } from "@/components/projects/discussion-thread";
 import { ActivityTimeline } from "@/components/projects/activity-timeline";
 import { UploadButton } from "@/components/projects/upload-button";
+import { DeleteProjectButton } from "@/components/projects/delete-project-button";
 import { DRONE_SUBCATEGORIES, SIMBG_SUBCATEGORIES } from "@/lib/constants";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
 
@@ -303,12 +304,15 @@ export default async function ProjectDetailPage({
 
   return (
     <div className="space-y-6">
-      <Link
-        href="/projects"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Kembali ke daftar proyek
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href="/projects"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" /> Kembali ke daftar proyek
+        </Link>
+        {can(profile.role, "project:delete") && <DeleteProjectButton projectId={id} />}
+      </div>
 
       {/* Project header */}
       <div className="flex flex-col gap-4 rounded-xl border bg-card p-6 sm:flex-row sm:items-center sm:justify-between">
