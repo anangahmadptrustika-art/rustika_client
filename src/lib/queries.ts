@@ -272,8 +272,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const avg =
     projects.length > 0
       ? Math.round(
-          projects.reduce((sum, p) => sum + (p.progress ?? 0), 0) / projects.length
-        )
+          (projects.reduce((sum, p) => sum + Number(p.progress ?? 0), 0) /
+            projects.length) *
+            100
+        ) / 100
       : 0;
 
   const outstanding = invoices

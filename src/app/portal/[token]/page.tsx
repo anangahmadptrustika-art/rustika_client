@@ -25,7 +25,11 @@ export default async function PortalHome({
   const completed = projects.filter((p) => p.status === "completed").length;
   const avg =
     projects.length > 0
-      ? Math.round(projects.reduce((s, p) => s + (p.progress ?? 0), 0) / projects.length)
+      ? Math.round(
+          (projects.reduce((s, p) => s + Number(p.progress ?? 0), 0) /
+            projects.length) *
+            100
+        ) / 100
       : 0;
 
   return (
@@ -54,7 +58,7 @@ export default async function PortalHome({
             <CardContent className="flex flex-col items-center gap-1 p-4 text-center">
               <Gauge className="h-5 w-5 text-primary" />
               <span className="text-2xl font-bold">{avg}%</span>
-              <span className="text-xs text-muted-foreground">Rata-rata Progres</span>
+              <span className="text-xs text-muted-foreground">Total Progres</span>
             </CardContent>
           </Card>
         </StaggerItem>

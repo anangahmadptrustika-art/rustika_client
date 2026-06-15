@@ -1,7 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FolderKanban, LayoutGrid, List, Search } from "lucide-react";
+import Link from "next/link";
+import {
+  ChevronRight,
+  FolderKanban,
+  LayoutGrid,
+  List,
+  Search,
+} from "lucide-react";
 import { ProjectCard } from "@/components/projects/project-card";
 import { ProjectStatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -14,14 +21,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import {
   PROJECT_STATUSES,
   PROJECT_STATUS_LABELS,
   type ProjectStatus,
 } from "@/lib/constants";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, getInitials } from "@/lib/utils";
 import type { ProjectWithRelations } from "@/types/database";
+
+interface ClientGroup {
+  id: string;
+  name: string;
+  projects: ProjectWithRelations[];
+}
 
 export function ProjectsBrowser({
   projects,
@@ -31,6 +44,7 @@ export function ProjectsBrowser({
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<ProjectStatus | "all">("all");
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
@@ -45,6 +59,26 @@ export function ProjectsBrowser({
       return matchesQuery && matchesStatus;
     });
   }, [projects, query, status]);
+
+  // Group filtered projects by client (sorted by client name).
+  const groups = useMemo<ClientGroup[]>(() => {
+    const map = new Map<string, ClientGroup>();
+    for (const p of filtered) {
+      const id = p.client_id ?? "none";
+      const name = p.client?.name ?? "Tanpa Client";
+      if (!map.has(id)) map.set(id, { id, name, projects: [] });
+      map.get(id)!.projects.push(p);
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [filtered]);
+
+  function toggle(id: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
 
   return (
     <div className="space-y-4">
@@ -93,7 +127,7 @@ export function ProjectsBrowser({
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Menampilkan {filtered.length} dari {projects.length} proyek
+        {filtered.length} proyek dalam {groups.length} client
       </p>
 
       {filtered.length === 0 ? (
@@ -102,43 +136,81 @@ export function ProjectsBrowser({
           title="Tidak ada proyek"
           description="Tidak ada proyek yang cocok dengan filter Anda."
         />
-      ) : view === "grid" ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((p) => (
-            <ProjectCard key={p.id} project={p} />
-          ))}
-        </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border">
-          {filtered.map((p, i) => (
-            <Link
-              key={p.id}
-              href={`/projects/${p.id}`}
-              className={cn(
-                "flex items-center gap-4 p-4 transition-colors hover:bg-accent",
-                i !== 0 && "border-t"
-              )}
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate font-medium">{p.name}</span>
-                  <ProjectStatusBadge status={p.status} />
-                </div>
-                <p className="truncate text-xs text-muted-foreground">
-                  {p.code} · {p.client?.name} · {p.location}
-                </p>
+        <div className="space-y-4">
+          {groups.map((group) => {
+            const isCollapsed = collapsed.has(group.id);
+            return (
+              <div key={group.id} className="overflow-hidden rounded-xl border bg-card">
+                {/* Client header */}
+                <button
+                  onClick={() => toggle(group.id)}
+                  className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-accent/40"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-sm font-semibold text-primary">
+                    {getInitials(group.name)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">{group.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {group.projects.length} proyek
+                    </p>
+                  </div>
+                  <Badge variant="secondary">{group.projects.length}</Badge>
+                  <ChevronRight
+                    className={cn(
+                      "h-5 w-5 shrink-0 text-muted-foreground transition-transform",
+                      !isCollapsed && "rotate-90"
+                    )}
+                  />
+                </button>
+
+                {!isCollapsed && (
+                  <div className="border-t p-4">
+                    {view === "grid" ? (
+                      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        {group.projects.map((p) => (
+                          <ProjectCard key={p.id} project={p} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="overflow-hidden rounded-lg border">
+                        {group.projects.map((p, i) => (
+                          <Link
+                            key={p.id}
+                            href={`/projects/${p.id}`}
+                            className={cn(
+                              "flex items-center gap-4 p-3 transition-colors hover:bg-accent",
+                              i !== 0 && "border-t"
+                            )}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="truncate font-medium">{p.name}</span>
+                                <ProjectStatusBadge status={p.status} />
+                              </div>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {p.code} · {p.location}
+                              </p>
+                            </div>
+                            <p className="hidden text-xs text-muted-foreground md:block">
+                              {formatDate(p.end_date)}
+                            </p>
+                            <div className="hidden w-36 shrink-0 sm:block">
+                              <div className="mb-1 flex justify-between text-xs">
+                                <span className="text-muted-foreground">{p.progress}%</span>
+                              </div>
+                              <Progress value={Number(p.progress)} />
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <p className="hidden text-xs text-muted-foreground md:block">
-                {formatDate(p.end_date)}
-              </p>
-              <div className="hidden w-36 shrink-0 sm:block">
-                <div className="mb-1 flex justify-between text-xs">
-                  <span className="text-muted-foreground">{p.progress}%</span>
-                </div>
-                <Progress value={p.progress} />
-              </div>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

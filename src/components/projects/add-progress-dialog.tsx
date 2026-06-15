@@ -72,7 +72,8 @@ export function AddProgressDialog({ projectId }: { projectId: string }) {
                 type="number"
                 min={0}
                 max={100}
-                placeholder="0–100"
+                step="0.01"
+                placeholder="0–100 (boleh desimal)"
                 required
               />
             </div>
