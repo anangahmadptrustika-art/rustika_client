@@ -37,23 +37,19 @@ export function Logo({
   return <MonogramFallback className={className} size={size} />;
 }
 
-/** Full logo lockup (mark + wordmark). Uses the uploaded logo image. */
+/** Full logo lockup: the brand mark (uploaded logo) + "RUSTIKA CONSULTANT". */
 export function LogoWordmark({ className }: { className?: string }) {
-  const [failed, setFailed] = useState(false);
-
-  if (!failed) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={LOGO_SRC}
-        alt="Rustika Consultant"
-        onError={() => setFailed(true)}
-        className={cn("h-10 w-auto object-contain", className)}
-      />
-    );
-  }
-
-  return <WordmarkFallback className={className} />;
+  return (
+    <div className={cn("flex items-center gap-2.5", className)}>
+      <Logo size={38} />
+      <div className="flex flex-col leading-none">
+        <span className="text-sm font-bold tracking-tight">RUSTIKA</span>
+        <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Consultant
+        </span>
+      </div>
+    </div>
+  );
 }
 
 // ── Fallbacks (shown only until public/logo.png exists) ───────
@@ -89,20 +85,6 @@ function MonogramFallback({
           fill="none"
         />
       </svg>
-    </div>
-  );
-}
-
-function WordmarkFallback({ className }: { className?: string }) {
-  return (
-    <div className={cn("flex items-center gap-2.5", className)}>
-      <MonogramFallback size={36} />
-      <div className="flex flex-col leading-none">
-        <span className="text-sm font-bold tracking-tight">RUSTIKA</span>
-        <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-          Consultant
-        </span>
-      </div>
     </div>
   );
 }
