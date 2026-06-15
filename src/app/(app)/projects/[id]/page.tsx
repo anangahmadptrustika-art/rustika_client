@@ -38,8 +38,9 @@ import { InvoiceTable } from "@/components/projects/invoice-table";
 import { ApprovalSection } from "@/components/projects/approval-section";
 import { DiscussionThread } from "@/components/projects/discussion-thread";
 import { ActivityTimeline } from "@/components/projects/activity-timeline";
-import { UploadButton } from "@/components/projects/upload-button";
 import { DeleteProjectButton } from "@/components/projects/delete-project-button";
+import { AddProgressDialog } from "@/components/projects/add-progress-dialog";
+import { AddInvoiceDialog } from "@/components/projects/add-invoice-dialog";
 import { DRONE_SUBCATEGORIES, SIMBG_SUBCATEGORIES } from "@/lib/constants";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
 
@@ -256,7 +257,7 @@ export default async function ProjectDetailPage({
       <div>
         {sectionHeader(
           "Progress Report",
-          canEdit && <UploadButton label="Tambah Laporan" />
+          can(profile.role, "progress:update") && <AddProgressDialog projectId={id} />
         )}
         <ProgressSection reports={progress} currentProgress={project.progress} />
       </div>
@@ -296,7 +297,10 @@ export default async function ProjectDetailPage({
   if (showFinance) {
     content.invoice = (
       <div>
-        {sectionHeader("Invoice", canEdit && <UploadButton label="Upload Invoice" />)}
+        {sectionHeader(
+          "Invoice",
+          can(profile.role, "invoice:manage") && <AddInvoiceDialog projectId={id} />
+        )}
         <InvoiceTable invoices={invoices} />
       </div>
     );

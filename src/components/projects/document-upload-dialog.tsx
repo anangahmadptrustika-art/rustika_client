@@ -118,6 +118,15 @@ export function DocumentUploadDialog({
         return;
       }
 
+      // Timeline (best-effort).
+      await supabase.from("activities").insert({
+        project_id: projectId,
+        user_id: user.id,
+        type: "upload",
+        entity_type: "document",
+        description: `mengunggah dokumen "${docName}"`,
+      });
+
       toast.success("Dokumen berhasil diunggah.");
       setOpen(false);
       reset();

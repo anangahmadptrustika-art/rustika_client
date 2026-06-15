@@ -99,6 +99,14 @@ export function ImageUploadDialog({ projectId }: { projectId: string }) {
         return;
       }
 
+      await supabase.from("activities").insert({
+        project_id: projectId,
+        user_id: user.id,
+        type: "upload",
+        entity_type: "image",
+        description: `mengunggah foto "${title.trim() || file.name}"`,
+      });
+
       toast.success("Foto berhasil diunggah.");
       setOpen(false);
       reset();
