@@ -17,7 +17,9 @@ export default function LoginPage() {
       <div className="relative hidden flex-col justify-between bg-foreground p-12 text-background lg:flex">
         <div className="bg-brand-gradient absolute inset-0 opacity-40" />
         <div className="relative z-10">
-          <LogoWordmark className="[&_*]:text-background" />
+          <div className="inline-flex rounded-xl bg-white/95 px-3 py-2 shadow-sm">
+            <LogoWordmark className="h-8 w-auto" />
+          </div>
         </div>
         <div className="relative z-10 space-y-6">
           <h2 className="text-balance text-3xl font-bold leading-tight">
