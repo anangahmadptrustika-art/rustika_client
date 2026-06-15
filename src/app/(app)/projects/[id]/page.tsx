@@ -29,6 +29,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ProjectTabs, type ProjectTabDef } from "@/components/projects/project-tabs";
 import { DocumentTable } from "@/components/projects/document-table";
+import { DocumentUploadDialog } from "@/components/projects/document-upload-dialog";
+import { ImageUploadDialog } from "@/components/projects/image-upload-dialog";
 import { ImageGallery } from "@/components/projects/image-gallery";
 import { ProgressSection } from "@/components/projects/progress-section";
 import { AreaDataSection } from "@/components/projects/area-data-section";
@@ -37,6 +39,7 @@ import { ApprovalSection } from "@/components/projects/approval-section";
 import { DiscussionThread } from "@/components/projects/discussion-thread";
 import { ActivityTimeline } from "@/components/projects/activity-timeline";
 import { UploadButton } from "@/components/projects/upload-button";
+import { DRONE_SUBCATEGORIES, SIMBG_SUBCATEGORIES } from "@/lib/constants";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
 
 export async function generateMetadata({
@@ -175,7 +178,10 @@ export default async function ProjectDetailPage({
     ),
     kajian: (
       <div>
-        {sectionHeader("Kajian Teknis", canEdit && <UploadButton label="Upload Dokumen" />)}
+        {sectionHeader(
+          "Kajian Teknis",
+          canEdit && <DocumentUploadDialog projectId={id} category="kajian_teknis" />
+        )}
         <p className="mb-4 text-sm text-muted-foreground">
           Mendukung PDF, DOCX, XLSX dengan version control & riwayat unduhan.
         </p>
@@ -184,7 +190,17 @@ export default async function ProjectDetailPage({
     ),
     simbg: (
       <div>
-        {sectionHeader("SIMBG Drawing", canEdit && <UploadButton label="Upload Gambar" />)}
+        {sectionHeader(
+          "SIMBG Drawing",
+          canEdit && (
+            <DocumentUploadDialog
+              projectId={id}
+              category="simbg"
+              subcategories={SIMBG_SUBCATEGORIES}
+              label="Upload Gambar"
+            />
+          )
+        )}
         <p className="mb-4 text-sm text-muted-foreground">
           Kategori: Arsitektur, Struktur, MEP, Siteplan — DWG, PDF, JPG, PNG.
         </p>
@@ -193,7 +209,10 @@ export default async function ProjectDetailPage({
     ),
     survey: (
       <div>
-        {sectionHeader("Survey", canEdit && <UploadButton label="Upload Dokumen" />)}
+        {sectionHeader(
+          "Survey",
+          canEdit && <DocumentUploadDialog projectId={id} category="survey" />
+        )}
         <p className="mb-4 text-sm text-muted-foreground">
           Berita acara, checklist survey, koordinat, form survey & dokumen lapangan.
         </p>
@@ -202,7 +221,17 @@ export default async function ProjectDetailPage({
     ),
     drone: (
       <div>
-        {sectionHeader("Drone Mapping", canEdit && <UploadButton label="Upload Data" />)}
+        {sectionHeader(
+          "Drone Mapping",
+          canEdit && (
+            <DocumentUploadDialog
+              projectId={id}
+              category="drone"
+              subcategories={DRONE_SUBCATEGORIES}
+              label="Upload Data"
+            />
+          )
+        )}
         <p className="mb-4 text-sm text-muted-foreground">
           Orthomosaic, DSM, DTM, Point Cloud & foto udara dengan metadata.
         </p>
@@ -214,7 +243,7 @@ export default async function ProjectDetailPage({
     ),
     images: (
       <div>
-        {sectionHeader("Capture Images", canEdit && <UploadButton label="Upload Foto" />)}
+        {sectionHeader("Capture Images", canEdit && <ImageUploadDialog projectId={id} />)}
         <p className="mb-4 text-sm text-muted-foreground">
           Galeri foto: Existing Condition, Survey, Progress, Final Documentation.
         </p>

@@ -1,5 +1,4 @@
 import {
-  Download,
   FileArchive,
   FileImage,
   FileSpreadsheet,
@@ -15,8 +14,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
+import { DocumentDownloadButton } from "@/components/projects/document-download-button";
 import { formatBytes, formatDate } from "@/lib/utils";
 import type { ProjectDocument } from "@/types/database";
 
@@ -110,9 +109,7 @@ export function DocumentTable({
                   {formatDate(doc.created_at)}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" aria-label="Download">
-                    <Download className="h-4 w-4" />
-                  </Button>
+                  <DocumentDownloadButton filePath={doc.file_path} />
                 </TableCell>
               </TableRow>
             );

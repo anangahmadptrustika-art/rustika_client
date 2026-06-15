@@ -24,7 +24,7 @@ import type {
   ProjectProgress,
   ProjectWithRelations,
 } from "@/types/database";
-import type { DocumentCategory } from "@/lib/constants";
+import { STORAGE_BUCKETS, type DocumentCategory } from "@/lib/constants";
 
 async function sb() {
   return createClient();
@@ -118,7 +118,23 @@ export async function getProjectImages(projectId: string): Promise<ProjectImage[
     .select("*")
     .eq("project_id", projectId)
     .order("created_at", { ascending: false });
-  return data ?? [];
+  const rows: ProjectImage[] = data ?? [];
+  if (rows.length === 0) return rows;
+
+  // Private bucket — generate short-lived signed URLs so images render.
+  const { data: signed } = await supabase.storage
+    .from(STORAGE_BUCKETS.images)
+    .createSignedUrls(
+      rows.map((r) => r.file_path),
+      3600
+    );
+  const urlByPath = new Map(
+    (signed ?? []).map((s) => [s.path, s.signedUrl] as const)
+  );
+  return rows.map((r) => ({
+    ...r,
+    file_url: urlByPath.get(r.file_path) ?? r.file_url,
+  }));
 }
 
 export async function getProjectProgress(
