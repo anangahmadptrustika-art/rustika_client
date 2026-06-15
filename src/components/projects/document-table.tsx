@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import { DocumentDownloadButton } from "@/components/projects/document-download-button";
+import { DocumentActions } from "@/components/projects/document-actions";
 import { formatBytes, formatDate } from "@/lib/utils";
 import type { ProjectDocument } from "@/types/database";
 
@@ -43,9 +43,13 @@ function iconForType(type: string | null) {
 export function DocumentTable({
   documents,
   showSubcategory = false,
+  projectId,
+  canDelete = false,
 }: {
   documents: ProjectDocument[];
   showSubcategory?: boolean;
+  projectId: string;
+  canDelete?: boolean;
 }) {
   if (documents.length === 0) {
     return (
@@ -109,7 +113,14 @@ export function DocumentTable({
                   {formatDate(doc.created_at)}
                 </TableCell>
                 <TableCell className="text-right">
-                  <DocumentDownloadButton filePath={doc.file_path} />
+                  <DocumentActions
+                    documentId={doc.id}
+                    projectId={projectId}
+                    name={doc.name}
+                    filePath={doc.file_path}
+                    fileType={doc.file_type}
+                    canDelete={canDelete}
+                  />
                 </TableCell>
               </TableRow>
             );

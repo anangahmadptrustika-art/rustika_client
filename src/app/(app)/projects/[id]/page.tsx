@@ -32,7 +32,7 @@ import { ProjectTabs, type ProjectTabDef } from "@/components/projects/project-t
 import { DocumentTable } from "@/components/projects/document-table";
 import { DocumentUploadDialog } from "@/components/projects/document-upload-dialog";
 import { ImageUploadDialog } from "@/components/projects/image-upload-dialog";
-import { ImageGallery } from "@/components/projects/image-gallery";
+import { ProjectImageGallery } from "@/components/projects/project-image-gallery";
 import { ProgressSection } from "@/components/projects/progress-section";
 import { AreaDataSection } from "@/components/projects/area-data-section";
 import { InvoiceTable } from "@/components/projects/invoice-table";
@@ -72,6 +72,7 @@ export default async function ProjectDetailPage({
 
   const showFinance = canViewFinance(profile.role);
   const canEdit = can(profile.role, "document:upload");
+  const canDeleteDoc = can(profile.role, "document:delete");
   const canEditProject = can(profile.role, "project:edit");
   const clients = canEditProject ? await getClients() : [];
 
@@ -192,7 +193,7 @@ export default async function ProjectDetailPage({
         <p className="mb-4 text-sm text-muted-foreground">
           Mendukung PDF, DOCX, XLSX dengan version control & riwayat unduhan.
         </p>
-        <DocumentTable documents={kajian} />
+        <DocumentTable documents={kajian} projectId={id} canDelete={canDeleteDoc} />
       </div>
     ),
     simbg: (
@@ -211,7 +212,7 @@ export default async function ProjectDetailPage({
         <p className="mb-4 text-sm text-muted-foreground">
           Kategori: Arsitektur, Struktur, MEP, Siteplan — DWG, PDF, JPG, PNG.
         </p>
-        <DocumentTable documents={simbg} showSubcategory />
+        <DocumentTable documents={simbg} showSubcategory projectId={id} canDelete={canDeleteDoc} />
       </div>
     ),
     survey: (
@@ -223,7 +224,7 @@ export default async function ProjectDetailPage({
         <p className="mb-4 text-sm text-muted-foreground">
           Berita acara, checklist survey, koordinat, form survey & dokumen lapangan.
         </p>
-        <DocumentTable documents={survey} />
+        <DocumentTable documents={survey} projectId={id} canDelete={canDeleteDoc} />
       </div>
     ),
     drone: (
@@ -242,9 +243,11 @@ export default async function ProjectDetailPage({
         <p className="mb-4 text-sm text-muted-foreground">
           Orthomosaic, DSM, DTM, Point Cloud & foto udara dengan metadata.
         </p>
-        {drone.length > 0 && <DocumentTable documents={drone} showSubcategory />}
+        {drone.length > 0 && (
+          <DocumentTable documents={drone} showSubcategory projectId={id} canDelete={canDeleteDoc} />
+        )}
         <div className="mt-6">
-          <ImageGallery images={droneImages} />
+          <ProjectImageGallery images={droneImages} projectId={id} canDelete={canDeleteDoc} />
         </div>
       </div>
     ),
@@ -254,7 +257,7 @@ export default async function ProjectDetailPage({
         <p className="mb-4 text-sm text-muted-foreground">
           Galeri foto: Existing Condition, Survey, Progress, Final Documentation.
         </p>
-        <ImageGallery images={images} />
+        <ProjectImageGallery images={images} projectId={id} canDelete={canDeleteDoc} />
       </div>
     ),
     area: (

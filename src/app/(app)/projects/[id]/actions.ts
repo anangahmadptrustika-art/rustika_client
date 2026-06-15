@@ -6,9 +6,76 @@ import { getCurrentProfile } from "@/lib/auth";
 import { can } from "@/lib/rbac";
 import { DEMO_MODE } from "@/lib/config";
 import { logActivity } from "@/lib/activity";
-import type { ApprovalStatus } from "@/lib/constants";
+import { STORAGE_BUCKETS, type ApprovalStatus } from "@/lib/constants";
 
 export type ActionResult = { ok: boolean; message: string };
+
+export async function deleteDocument(input: {
+  documentId: string;
+  projectId: string;
+  filePath: string;
+}): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!can(profile?.role, "document:delete")) {
+    return { ok: false, message: "Anda tidak memiliki izin menghapus dokumen." };
+  }
+  if (DEMO_MODE) return { ok: true, message: "Dokumen dihapus (mode demo)." };
+
+  const supabase = await createClient();
+  // Remove the stored file (best-effort) then the DB row.
+  if (input.filePath) {
+    await supabase.storage.from(STORAGE_BUCKETS.documents).remove([input.filePath]);
+  }
+  const { error } = await supabase
+    .from("project_documents")
+    .delete()
+    .eq("id", input.documentId);
+  if (error) return { ok: false, message: error.message };
+
+  await logActivity({
+    projectId: input.projectId,
+    userId: profile!.id,
+    type: "upload",
+    entityType: "document",
+    description: "menghapus sebuah dokumen",
+  });
+
+  revalidatePath(`/projects/${input.projectId}`);
+  return { ok: true, message: "Dokumen dihapus." };
+}
+
+export async function deleteProjectImage(input: {
+  imageId: string;
+  projectId: string;
+  filePath: string;
+}): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!can(profile?.role, "document:delete")) {
+    return { ok: false, message: "Anda tidak memiliki izin menghapus foto." };
+  }
+  if (DEMO_MODE) return { ok: true, message: "Foto dihapus (mode demo)." };
+
+  const supabase = await createClient();
+  if (input.filePath) {
+    await supabase.storage.from(STORAGE_BUCKETS.images).remove([input.filePath]);
+  }
+  const { error } = await supabase
+    .from("project_images")
+    .delete()
+    .eq("id", input.imageId);
+  if (error) return { ok: false, message: error.message };
+
+  await logActivity({
+    projectId: input.projectId,
+    userId: profile!.id,
+    type: "upload",
+    entityType: "image",
+    description: "menghapus sebuah foto",
+  });
+
+  revalidatePath(`/projects/${input.projectId}`);
+  return { ok: true, message: "Foto dihapus." };
+}
 
 export async function saveAreaData(formData: FormData): Promise<ActionResult> {
   const profile = await getCurrentProfile();
