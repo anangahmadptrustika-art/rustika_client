@@ -38,13 +38,18 @@ export function SharePortalButton({
     );
   }
 
-  // Always build the portal link from the stable PUBLIC site URL so the QR
-  // works for clients (preview URLs are protected by Vercel login) and printed
-  // QRs never break. Falls back to the current origin if not configured.
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  const base =
-    configured && !configured.includes("localhost") ? configured : origin;
-  const url = `${base}/portal/${token}`;
+  // Build the portal link from the public site URL when it is a valid http(s)
+  // URL; otherwise fall back to the current origin (which is the production
+  // domain when the admin opens the app there). This guards against
+  // NEXT_PUBLIC_SITE_URL accidentally holding a placeholder/invalid value.
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+  const isValidConfigured =
+    !!configured &&
+    /^https?:\/\//.test(configured) &&
+    !configured.includes("localhost") &&
+    !configured.includes("<");
+  const base = isValidConfigured ? configured! : origin;
+  const url = base ? `${base}/portal/${token}` : "";
 
   async function copy() {
     await navigator.clipboard.writeText(url);
