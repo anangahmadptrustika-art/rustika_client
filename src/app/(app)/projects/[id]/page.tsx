@@ -15,6 +15,7 @@ import {
   getActivities,
   getApprovals,
   getAreaData,
+  getClients,
   getComments,
   getInvoices,
   getProjectById,
@@ -39,6 +40,7 @@ import { ApprovalSection } from "@/components/projects/approval-section";
 import { DiscussionThread } from "@/components/projects/discussion-thread";
 import { ActivityTimeline } from "@/components/projects/activity-timeline";
 import { DeleteProjectButton } from "@/components/projects/delete-project-button";
+import { EditProjectDialog } from "@/components/projects/edit-project-dialog";
 import { AddProgressDialog } from "@/components/projects/add-progress-dialog";
 import { AddInvoiceDialog } from "@/components/projects/add-invoice-dialog";
 import { AreaDataDialog } from "@/components/projects/area-data-dialog";
@@ -70,6 +72,8 @@ export default async function ProjectDetailPage({
 
   const showFinance = canViewFinance(profile.role);
   const canEdit = can(profile.role, "document:upload");
+  const canEditProject = can(profile.role, "project:edit");
+  const clients = canEditProject ? await getClients() : [];
 
   const [
     kajian,
@@ -324,7 +328,10 @@ export default async function ProjectDetailPage({
         >
           <ArrowLeft className="h-4 w-4" /> Kembali ke daftar proyek
         </Link>
-        {can(profile.role, "project:delete") && <DeleteProjectButton projectId={id} />}
+        <div className="flex items-center gap-2">
+          {canEditProject && <EditProjectDialog project={project} clients={clients} />}
+          {can(profile.role, "project:delete") && <DeleteProjectButton projectId={id} />}
+        </div>
       </div>
 
       {/* Project header */}

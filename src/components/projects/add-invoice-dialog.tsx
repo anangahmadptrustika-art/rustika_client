@@ -70,7 +70,7 @@ export function AddInvoiceDialog({ projectId }: { projectId: string }) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="amount">Nilai (IDR) *</Label>
-            <Input id="amount" name="amount" type="number" min={0} placeholder="0" required />
+            <Input id="amount" name="amount" type="number" min={0} step="0.01" placeholder="0,00" required />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

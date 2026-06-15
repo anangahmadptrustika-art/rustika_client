@@ -6,20 +6,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** Format a number as Indonesian Rupiah currency. */
+/** Format a number as Indonesian Rupiah currency (up to 2 decimals). */
 export function formatCurrency(value: number | null | undefined): string {
   if (value === null || value === undefined) return "-";
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(value);
 }
 
-/** Format a number with thousands separators (id-ID locale). */
+/** Format a number with thousands separators (id-ID, up to 2 decimals). */
 export function formatNumber(value: number | null | undefined): string {
   if (value === null || value === undefined) return "-";
-  return new Intl.NumberFormat("id-ID").format(value);
+  return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(value);
 }
 
 /** Format a date string/Date into a readable Indonesian date. */
