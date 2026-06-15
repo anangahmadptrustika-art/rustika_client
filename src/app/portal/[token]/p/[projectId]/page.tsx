@@ -1,16 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ArrowLeft,
-  Camera,
-  FileBox,
-  FileText,
-  MapPinned,
-  Plane,
-  Receipt,
-  Ruler,
-  TrendingUp,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { getClientByToken, getPortalProjectBundle } from "@/lib/portal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -29,6 +19,7 @@ import {
   FilePreviewGrid,
   type PreviewItem,
 } from "@/components/portal/file-preview-grid";
+import { PortalFolder } from "@/components/portal/portal-folder";
 import { kindFromType } from "@/lib/file-kind";
 import type { ProjectDocument } from "@/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -43,28 +34,6 @@ function docsToItems(docs: ProjectDocument[]): PreviewItem[] {
     badge: d.subcategory,
     version: d.version,
   }));
-}
-
-function Section({
-  icon: Icon,
-  title,
-  children,
-}: {
-  icon: typeof FileText;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="scroll-mt-20">
-      <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Icon className="h-4 w-4" />
-        </span>
-        {title}
-      </h2>
-      {children}
-    </section>
-  );
 }
 
 export default async function PortalProjectPage({
@@ -122,78 +91,84 @@ export default async function PortalProjectPage({
         </div>
       </div>
 
-      <Section icon={TrendingUp} title="Laporan Progress">
-        <ProgressSection reports={progress} currentProgress={project.progress} />
-      </Section>
+      <p className="text-sm text-muted-foreground">
+        Ketuk folder untuk membuka isinya.
+      </p>
 
-      <Section icon={FileText} title="Kajian Teknis">
-        <FilePreviewGrid items={docsToItems(kajian)} emptyLabel="Belum ada dokumen kajian teknis." />
-      </Section>
+      <div className="space-y-3">
+        <PortalFolder title="Laporan Progress" count={progress.length} unit="laporan">
+          <ProgressSection reports={progress} currentProgress={project.progress} />
+        </PortalFolder>
 
-      <Section icon={FileBox} title="Gambar SIMBG">
-        <FilePreviewGrid items={docsToItems(simbg)} emptyLabel="Belum ada gambar SIMBG." />
-      </Section>
+        <PortalFolder title="Kajian Teknis" count={kajian.length} unit="dokumen">
+          <FilePreviewGrid items={docsToItems(kajian)} emptyLabel="Belum ada dokumen kajian teknis." />
+        </PortalFolder>
 
-      <Section icon={MapPinned} title="Survey">
-        <FilePreviewGrid items={docsToItems(survey)} emptyLabel="Belum ada dokumen survey." />
-      </Section>
+        <PortalFolder title="Gambar SIMBG" count={simbg.length} unit="gambar">
+          <FilePreviewGrid items={docsToItems(simbg)} emptyLabel="Belum ada gambar SIMBG." />
+        </PortalFolder>
 
-      {drone.length > 0 && (
-        <Section icon={Plane} title="Drone Mapping">
-          <FilePreviewGrid items={docsToItems(drone)} />
-        </Section>
-      )}
+        <PortalFolder title="Survey" count={survey.length} unit="dokumen">
+          <FilePreviewGrid items={docsToItems(survey)} emptyLabel="Belum ada dokumen survey." />
+        </PortalFolder>
 
-      <Section icon={Camera} title="Capture Image">
-        <FilePreviewGrid items={imageItems} emptyLabel="Belum ada foto dokumentasi." />
-      </Section>
-
-      <Section icon={Ruler} title="Data Luasan">
-        <AreaDataSection data={area} />
-      </Section>
-
-      <Section icon={Receipt} title="Invoice">
-        {invoices.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              Belum ada invoice.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="rounded-xl border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>No. Invoice</TableHead>
-                  <TableHead>Termin</TableHead>
-                  <TableHead>Nilai</TableHead>
-                  <TableHead>Jatuh Tempo</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invoices.map((inv) => (
-                  <TableRow key={inv.id}>
-                    <TableCell className="font-medium">{inv.invoice_number}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {inv.termin ?? "—"}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {formatCurrency(Number(inv.amount))}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(inv.due_date)}
-                    </TableCell>
-                    <TableCell>
-                      <InvoiceStatusBadge status={inv.status} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+        {drone.length > 0 && (
+          <PortalFolder title="Drone Mapping" count={drone.length} unit="file">
+            <FilePreviewGrid items={docsToItems(drone)} />
+          </PortalFolder>
         )}
-      </Section>
+
+        <PortalFolder title="Capture Image" count={images.length} unit="foto">
+          <FilePreviewGrid items={imageItems} emptyLabel="Belum ada foto dokumentasi." />
+        </PortalFolder>
+
+        <PortalFolder title="Data Luasan">
+          <AreaDataSection data={area} />
+        </PortalFolder>
+
+        <PortalFolder title="Invoice" count={invoices.length} unit="invoice">
+          {invoices.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                Belum ada invoice.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="rounded-xl border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>No. Invoice</TableHead>
+                    <TableHead>Termin</TableHead>
+                    <TableHead>Nilai</TableHead>
+                    <TableHead>Jatuh Tempo</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invoices.map((inv) => (
+                    <TableRow key={inv.id}>
+                      <TableCell className="font-medium">{inv.invoice_number}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {inv.termin ?? "—"}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {formatCurrency(Number(inv.amount))}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(inv.due_date)}
+                      </TableCell>
+                      <TableCell>
+                        <InvoiceStatusBadge status={inv.status} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </PortalFolder>
+      </div>
     </div>
   );
 }
