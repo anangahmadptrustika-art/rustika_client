@@ -52,6 +52,7 @@ export interface PortalProjectBundle {
 /**
  * Returns everything a client may see for a project — but only if that project
  * belongs to the client (defense against token holders guessing project ids).
+ * Every sub-query is isolated so a single failure never crashes the portal.
  */
 export async function getPortalProjectBundle(
   clientId: string,
@@ -67,65 +68,99 @@ export async function getPortalProjectBundle(
     .maybeSingle();
   if (!project) return null;
 
-  const [docsRes, imgsRes, progRes, areaRes, invRes] = await Promise.all([
-    admin
-      .from("project_documents")
-      .select("*")
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: false }),
-    admin
-      .from("project_images")
-      .select("*")
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: false }),
-    admin
-      .from("project_progress")
-      .select("*")
-      .eq("project_id", projectId)
-      .order("report_date", { ascending: true }),
-    admin.from("area_data").select("*").eq("project_id", projectId).maybeSingle(),
-    admin
-      .from("invoices")
-      .select("*")
-      .eq("project_id", projectId)
-      .order("issue_date", { ascending: false }),
+  const safe = async <T>(
+    query: PromiseLike<{ data: unknown }>,
+    fallback: T
+  ): Promise<T> => {
+    try {
+      const { data } = await query;
+      return (data as T) ?? fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
+  const [docs, imgs, progress, area, invoices] = await Promise.all([
+    safe<ProjectDocument[]>(
+      admin
+        .from("project_documents")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false }),
+      []
+    ),
+    safe<ProjectImage[]>(
+      admin
+        .from("project_images")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false }),
+      []
+    ),
+    safe<ProjectProgress[]>(
+      admin
+        .from("project_progress")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("report_date", { ascending: true }),
+      []
+    ),
+    safe<AreaData | null>(
+      admin.from("area_data").select("*").eq("project_id", projectId).maybeSingle(),
+      null
+    ),
+    safe<Invoice[]>(
+      admin
+        .from("invoices")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("issue_date", { ascending: false }),
+      []
+    ),
   ]);
 
-  const documents = await signDocuments(admin, (docsRes.data as ProjectDocument[]) ?? []);
-  const images = await signImages(admin, (imgsRes.data as ProjectImage[]) ?? []);
+  const documents = await signDocuments(admin, docs);
+  const images = await signImages(admin, imgs);
 
   return {
     project: project as Project,
     documents,
     images,
-    progress: (progRes.data as ProjectProgress[]) ?? [],
-    area: (areaRes.data as AreaData) ?? null,
-    invoices: (invRes.data as Invoice[]) ?? [],
+    progress,
+    area,
+    invoices,
   };
 }
 
 type Admin = ReturnType<typeof createAdminClient>;
-
 type SignedUrl = { path: string | null; signedUrl: string };
 
 async function signDocuments(admin: Admin, docs: ProjectDocument[]) {
   if (docs.length === 0) return docs;
-  const { data } = await admin.storage
-    .from(STORAGE_BUCKETS.documents)
-    .createSignedUrls(docs.map((d) => d.file_path), 3600);
-  const map = new Map(
-    ((data ?? []) as SignedUrl[]).map((s) => [s.path, s.signedUrl] as const)
-  );
-  return docs.map((d) => ({ ...d, file_url: map.get(d.file_path) ?? null }));
+  try {
+    const { data } = await admin.storage
+      .from(STORAGE_BUCKETS.documents)
+      .createSignedUrls(docs.map((d) => d.file_path), 3600);
+    const map = new Map(
+      ((data ?? []) as SignedUrl[]).map((s) => [s.path, s.signedUrl] as const)
+    );
+    return docs.map((d) => ({ ...d, file_url: map.get(d.file_path) ?? null }));
+  } catch {
+    return docs.map((d) => ({ ...d, file_url: null }));
+  }
 }
 
 async function signImages(admin: Admin, imgs: ProjectImage[]) {
   if (imgs.length === 0) return imgs;
-  const { data } = await admin.storage
-    .from(STORAGE_BUCKETS.images)
-    .createSignedUrls(imgs.map((i) => i.file_path), 3600);
-  const map = new Map(
-    ((data ?? []) as SignedUrl[]).map((s) => [s.path, s.signedUrl] as const)
-  );
-  return imgs.map((i) => ({ ...i, file_url: map.get(i.file_path) ?? i.file_url }));
+  try {
+    const { data } = await admin.storage
+      .from(STORAGE_BUCKETS.images)
+      .createSignedUrls(imgs.map((i) => i.file_path), 3600);
+    const map = new Map(
+      ((data ?? []) as SignedUrl[]).map((s) => [s.path, s.signedUrl] as const)
+    );
+    return imgs.map((i) => ({ ...i, file_url: map.get(i.file_path) ?? i.file_url }));
+  } catch {
+    return imgs.map((i) => ({ ...i, file_url: i.file_url }));
+  }
 }
