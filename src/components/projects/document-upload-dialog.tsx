@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -15,9 +15,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -44,24 +44,28 @@ export function DocumentUploadDialog({
   label?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [name, setName] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
   const [subcategory, setSubcategory] = useState("");
   const [description, setDescription] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [done, setDone] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   function reset() {
-    setFile(null);
-    setName("");
+    setFiles([]);
     setSubcategory("");
     setDescription("");
+    setDone(0);
     if (inputRef.current) inputRef.current.value = "";
   }
 
+  function removeFile(idx: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+  }
+
   async function handleUpload() {
-    if (!file) {
+    if (files.length === 0) {
       toast.error("Pilih file terlebih dahulu.");
       return;
     }
@@ -70,6 +74,7 @@ export function DocumentUploadDialog({
       return;
     }
     setUploading(true);
+    setDone(0);
     try {
       const supabase = createClient();
       const {
@@ -80,57 +85,68 @@ export function DocumentUploadDialog({
         return;
       }
 
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-      const path = `${projectId}/${category}/${Date.now()}-${sanitize(file.name)}`;
+      let ok = 0;
+      let fail = 0;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+        const path = `${projectId}/${category}/${Date.now()}-${i}-${sanitize(file.name)}`;
 
-      // 1. Upload file to Supabase Storage (respects RLS storage policies).
-      const { error: upErr } = await supabase.storage
-        .from(STORAGE_BUCKETS.documents)
-        .upload(path, file, { upsert: false });
-      if (upErr) {
-        toast.error("Gagal mengunggah file: " + upErr.message);
-        return;
+        const { error: upErr } = await supabase.storage
+          .from(STORAGE_BUCKETS.documents)
+          .upload(path, file, { upsert: false });
+        if (upErr) {
+          fail++;
+          setDone(i + 1);
+          continue;
+        }
+
+        const docName = file.name;
+        const { count } = await supabase
+          .from("project_documents")
+          .select("*", { count: "exact", head: true })
+          .eq("project_id", projectId)
+          .eq("name", docName);
+
+        const { error: insErr } = await supabase.from("project_documents").insert({
+          project_id: projectId,
+          category,
+          subcategory: subcategory || null,
+          name: docName,
+          file_path: path,
+          file_type: ext,
+          file_size: file.size,
+          version: (count ?? 0) + 1,
+          description: description.trim() || null,
+          uploaded_by: user.id,
+        });
+        if (insErr) fail++;
+        else ok++;
+        setDone(i + 1);
       }
 
-      // 2. Version control — increment based on same-named docs.
-      const docName = name.trim() || file.name;
-      const { count } = await supabase
-        .from("project_documents")
-        .select("*", { count: "exact", head: true })
-        .eq("project_id", projectId)
-        .eq("name", docName);
-
-      // 3. Record the document row.
-      const { error: insErr } = await supabase.from("project_documents").insert({
-        project_id: projectId,
-        category,
-        subcategory: subcategory || null,
-        name: docName,
-        file_path: path,
-        file_type: ext,
-        file_size: file.size,
-        version: (count ?? 0) + 1,
-        description: description.trim() || null,
-        uploaded_by: user.id,
-      });
-      if (insErr) {
-        toast.error("File terunggah, tetapi gagal mencatat ke database: " + insErr.message);
-        return;
+      // One summary activity for the batch.
+      if (ok > 0) {
+        await supabase.from("activities").insert({
+          project_id: projectId,
+          user_id: user.id,
+          type: "upload",
+          entity_type: "document",
+          description:
+            ok === 1
+              ? `mengunggah dokumen "${files[0].name}"`
+              : `mengunggah ${ok} dokumen`,
+        });
       }
 
-      // Timeline (best-effort).
-      await supabase.from("activities").insert({
-        project_id: projectId,
-        user_id: user.id,
-        type: "upload",
-        entity_type: "document",
-        description: `mengunggah dokumen "${docName}"`,
-      });
-
-      toast.success("Dokumen berhasil diunggah.");
-      setOpen(false);
-      reset();
-      router.refresh();
+      if (ok > 0) {
+        toast.success(`${ok} file berhasil diunggah${fail ? `, ${fail} gagal` : ""}.`);
+        setOpen(false);
+        reset();
+        router.refresh();
+      } else {
+        toast.error("Gagal mengunggah file.");
+      }
     } catch (e) {
       toast.error("Terjadi kesalahan: " + (e as Error).message);
     } finally {
@@ -138,10 +154,13 @@ export function DocumentUploadDialog({
     }
   }
 
+  const totalSize = files.reduce((s, f) => s + f.size, 0);
+
   return (
     <Dialog
       open={open}
       onOpenChange={(o) => {
+        if (uploading) return;
         setOpen(o);
         if (!o) reset();
       }}
@@ -151,37 +170,61 @@ export function DocumentUploadDialog({
           <Upload className="h-4 w-4" /> {label}
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{label}</DialogTitle>
           <DialogDescription>
-            File disimpan aman di Supabase Storage dengan kontrol akses & version.
+            Pilih satu atau banyak file sekaligus. Disimpan aman di Supabase Storage.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="file">File *</Label>
+            <Label htmlFor="file">File (bisa pilih banyak) *</Label>
             <input
               ref={inputRef}
               id="file"
               type="file"
-              onChange={(e) => {
-                const f = e.target.files?.[0] ?? null;
-                setFile(f);
-                if (f && !name) setName(f.name);
-              }}
+              multiple
+              onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
               className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
             />
-            {file && (
-              <p className="text-xs text-muted-foreground">
-                {file.name} · {formatBytes(file.size)}
-              </p>
-            )}
           </div>
+
+          {files.length > 0 && (
+            <div className="space-y-1.5 rounded-lg border p-2">
+              <p className="px-1 text-xs font-medium text-muted-foreground">
+                {files.length} file dipilih · {formatBytes(totalSize)}
+              </p>
+              <ul className="scrollbar-thin max-h-40 space-y-1 overflow-y-auto">
+                {files.map((f, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-sm"
+                  >
+                    <span className="truncate">{f.name}</span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {formatBytes(f.size)}
+                      </span>
+                      {!uploading && (
+                        <button
+                          onClick={() => removeFile(i)}
+                          className="text-muted-foreground hover:text-destructive"
+                          aria-label="Hapus dari daftar"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {subcategories && subcategories.length > 0 && (
             <div className="space-y-2">
-              <Label>Kategori *</Label>
+              <Label>Kategori * (berlaku untuk semua file)</Label>
               <Select value={subcategory} onValueChange={setSubcategory}>
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih kategori" />
@@ -198,32 +241,31 @@ export function DocumentUploadDialog({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="docname">Nama Dokumen</Label>
-            <Input
-              id="docname"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Nama tampil dokumen"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="docdesc">Deskripsi</Label>
+            <Label htmlFor="docdesc">Deskripsi (opsional, berlaku untuk semua)</Label>
             <Textarea
               id="docdesc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Catatan / keterangan (opsional)…"
+              placeholder="Catatan / keterangan…"
             />
           </div>
+
+          {uploading && (
+            <div className="space-y-1">
+              <Progress value={files.length ? (done / files.length) * 100 : 0} />
+              <p className="text-center text-xs text-muted-foreground">
+                Mengunggah {done}/{files.length}…
+              </p>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={uploading}>
             Batal
           </Button>
-          <Button onClick={handleUpload} disabled={uploading || !file}>
+          <Button onClick={handleUpload} disabled={uploading || files.length === 0}>
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            {uploading ? "Mengunggah…" : "Unggah"}
+            {uploading ? "Mengunggah…" : `Unggah ${files.length || ""} File`}
           </Button>
         </DialogFooter>
       </DialogContent>
