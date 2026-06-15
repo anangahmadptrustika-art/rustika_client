@@ -19,18 +19,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { cn, formatBytes } from "@/lib/utils";
+import type { FileKind } from "@/lib/file-kind";
 
 export interface PreviewItem {
   id: string;
   name: string;
   url: string | null;
-  kind: "image" | "pdf" | "office" | "other";
+  kind: FileKind;
   size?: number | null;
   badge?: string | null;
   version?: number;
 }
 
-function iconFor(kind: PreviewItem["kind"]) {
+function iconFor(kind: FileKind) {
   switch (kind) {
     case "image":
       return ImageIcon;
@@ -142,13 +143,4 @@ export function FilePreviewGrid({
       </Dialog>
     </>
   );
-}
-
-/** Maps a file extension to a preview kind. */
-export function kindFromType(type: string | null | undefined): PreviewItem["kind"] {
-  const t = (type ?? "").toLowerCase();
-  if (["jpg", "jpeg", "png", "gif", "webp"].includes(t)) return "image";
-  if (t === "pdf") return "pdf";
-  if (["doc", "docx", "xls", "xlsx", "csv", "ppt", "pptx"].includes(t)) return "office";
-  return "other";
 }

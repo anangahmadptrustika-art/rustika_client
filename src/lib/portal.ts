@@ -9,6 +9,8 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/server";
 import { STORAGE_BUCKETS } from "@/lib/constants";
+import { DEMO_MODE } from "@/lib/config";
+import * as demo from "@/lib/demo-data";
 import type {
   AreaData,
   Client,
@@ -21,6 +23,9 @@ import type {
 
 export async function getClientByToken(token: string): Promise<Client | null> {
   if (!token) return null;
+  if (DEMO_MODE) {
+    return demo.demoClients.find((c) => c.share_token === token) ?? null;
+  }
   const admin = createAdminClient();
   const { data } = await admin
     .from("clients")
@@ -31,6 +36,9 @@ export async function getClientByToken(token: string): Promise<Client | null> {
 }
 
 export async function getPortalProjects(clientId: string): Promise<Project[]> {
+  if (DEMO_MODE) {
+    return demo.demoProjects.filter((p) => p.client_id === clientId);
+  }
   const admin = createAdminClient();
   const { data } = await admin
     .from("projects")
@@ -58,6 +66,21 @@ export async function getPortalProjectBundle(
   clientId: string,
   projectId: string
 ): Promise<PortalProjectBundle | null> {
+  if (DEMO_MODE) {
+    const project = demo.demoProjects.find(
+      (p) => p.id === projectId && p.client_id === clientId
+    );
+    if (!project) return null;
+    return {
+      project,
+      documents: demo.demoDocuments.filter((d) => d.project_id === projectId),
+      images: demo.demoImages.filter((i) => i.project_id === projectId),
+      progress: demo.demoProgress.filter((p) => p.project_id === projectId),
+      area: demo.demoAreaData.project_id === projectId ? demo.demoAreaData : null,
+      invoices: demo.demoInvoices.filter((i) => i.project_id === projectId),
+    };
+  }
+
   const admin = createAdminClient();
 
   const { data: project } = await admin

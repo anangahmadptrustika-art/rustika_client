@@ -27,9 +27,9 @@ import { ProgressSection } from "@/components/projects/progress-section";
 import { AreaDataSection } from "@/components/projects/area-data-section";
 import {
   FilePreviewGrid,
-  kindFromType,
   type PreviewItem,
 } from "@/components/portal/file-preview-grid";
+import { kindFromType } from "@/lib/file-kind";
 import type { ProjectDocument } from "@/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
