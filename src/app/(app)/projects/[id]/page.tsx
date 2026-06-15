@@ -41,6 +41,7 @@ import { ActivityTimeline } from "@/components/projects/activity-timeline";
 import { DeleteProjectButton } from "@/components/projects/delete-project-button";
 import { AddProgressDialog } from "@/components/projects/add-progress-dialog";
 import { AddInvoiceDialog } from "@/components/projects/add-invoice-dialog";
+import { AreaDataDialog } from "@/components/projects/area-data-dialog";
 import { DRONE_SUBCATEGORIES, SIMBG_SUBCATEGORIES } from "@/lib/constants";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
 
@@ -252,7 +253,15 @@ export default async function ProjectDetailPage({
         <ImageGallery images={images} />
       </div>
     ),
-    area: <AreaDataSection data={area} />,
+    area: (
+      <div>
+        {sectionHeader(
+          "Data Luasan",
+          canEdit && <AreaDataDialog projectId={id} data={area} />
+        )}
+        <AreaDataSection data={area} />
+      </div>
+    ),
     progress: (
       <div>
         {sectionHeader(

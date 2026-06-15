@@ -10,6 +10,62 @@ import type { ApprovalStatus } from "@/lib/constants";
 
 export type ActionResult = { ok: boolean; message: string };
 
+export async function saveAreaData(formData: FormData): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!can(profile?.role, "document:upload")) {
+    return { ok: false, message: "Tidak diizinkan." };
+  }
+  const projectId = String(formData.get("project_id") ?? "");
+  if (!projectId) return { ok: false, message: "Proyek tidak valid." };
+
+  const num = (k: string): number | null => {
+    const v = formData.get(k);
+    if (v === null || String(v).trim() === "") return null;
+    const n = Number(v);
+    return Number.isNaN(n) ? null : n;
+  };
+  const payload = {
+    luas_site: num("luas_site"),
+    luas_bangunan: num("luas_bangunan"),
+    luas_lantai: num("luas_lantai"),
+    kdb: num("kdb"),
+    klb: num("klb"),
+    kdh: num("kdh"),
+    gsb: num("gsb"),
+    notes: String(formData.get("notes") ?? "").trim() || null,
+  };
+
+  if (DEMO_MODE) return { ok: true, message: "Data luasan disimpan (mode demo)." };
+
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("area_data")
+    .select("id")
+    .eq("project_id", projectId)
+    .maybeSingle();
+
+  let error;
+  if (existing?.id) {
+    ({ error } = await supabase.from("area_data").update(payload).eq("id", existing.id));
+  } else {
+    ({ error } = await supabase
+      .from("area_data")
+      .insert({ ...payload, project_id: projectId, created_by: profile!.id }));
+  }
+  if (error) return { ok: false, message: error.message };
+
+  await logActivity({
+    projectId,
+    userId: profile!.id,
+    type: "project",
+    entityType: "area_data",
+    description: "memperbarui data luasan",
+  });
+
+  revalidatePath(`/projects/${projectId}`);
+  return { ok: true, message: "Data luasan disimpan." };
+}
+
 export async function addProgressReport(formData: FormData): Promise<ActionResult> {
   const profile = await getCurrentProfile();
   if (!can(profile?.role, "progress:update")) {
