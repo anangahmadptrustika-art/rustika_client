@@ -48,6 +48,7 @@ export interface Client {
   phone: string | null;
   address: string | null;
   logo_url: string | null;
+  share_token: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

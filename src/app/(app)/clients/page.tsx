@@ -7,8 +7,8 @@ import { can } from "@/lib/rbac";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
+import { SharePortalButton } from "@/components/clients/share-portal-button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
 
@@ -74,9 +74,9 @@ export default async function ClientsPage() {
               </div>
               <div className="flex items-center justify-between border-t pt-3">
                 <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <Building2 className="h-4 w-4" /> Proyek
+                  <Building2 className="h-4 w-4" /> {projectCount(c.id)} Proyek
                 </span>
-                <Badge variant="secondary">{projectCount(c.id)}</Badge>
+                <SharePortalButton token={c.share_token} clientName={c.name} />
               </div>
             </CardContent>
           </Card>
