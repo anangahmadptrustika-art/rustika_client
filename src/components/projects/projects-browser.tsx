@@ -81,55 +81,58 @@ export function ProjectsBrowser({
   }
 
   return (
-    <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cari nama proyek, kode, client, lokasi…"
-            className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:ring-1 focus:ring-ring"
-          />
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      {/* Fixed toolbar */}
+      <div className="shrink-0 space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Cari nama proyek, kode, client, lokasi…"
+              className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+          <Select value={status} onValueChange={(v) => setStatus(v as ProjectStatus | "all")}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Semua status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Status</SelectItem>
+              {PROJECT_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {PROJECT_STATUS_LABELS[s]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex rounded-md border p-0.5">
+            <Button
+              variant={view === "grid" ? "secondary" : "ghost"}
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setView("grid")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={view === "list" ? "secondary" : "ghost"}
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setView("list")}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <Select value={status} onValueChange={(v) => setStatus(v as ProjectStatus | "all")}>
-          <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Semua status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua Status</SelectItem>
-            {PROJECT_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {PROJECT_STATUS_LABELS[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <div className="flex rounded-md border p-0.5">
-          <Button
-            variant={view === "grid" ? "secondary" : "ghost"}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setView("grid")}
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={view === "list" ? "secondary" : "ghost"}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setView("list")}
-          >
-            <List className="h-4 w-4" />
-          </Button>
-        </div>
+
+        <p className="text-sm text-muted-foreground">
+          {filtered.length} proyek dalam {groups.length} client
+        </p>
       </div>
 
-      <p className="text-sm text-muted-foreground">
-        {filtered.length} proyek dalam {groups.length} client
-      </p>
-
+      {/* Scrollable project list */}
       {filtered.length === 0 ? (
         <EmptyState
           icon={FolderKanban}
@@ -137,7 +140,7 @@ export function ProjectsBrowser({
           description="Tidak ada proyek yang cocok dengan filter Anda."
         />
       ) : (
-        <div className="space-y-4">
+        <div className="scrollbar-thin min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           {groups.map((group) => {
             const isCollapsed = collapsed.has(group.id);
             return (

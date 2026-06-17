@@ -13,10 +13,11 @@ export default async function ProjectsPage() {
   const [projects, clients] = await Promise.all([getProjects(), getClients()]);
 
   return (
-    <div>
+    <div className="flex h-full flex-col">
       <PageHeader
         title="Proyek"
         description="Seluruh proyek konsultan, arsitektur, sipil, survey, dan SIMBG."
+        className="mb-4 shrink-0"
       >
         {can(profile.role, "project:create") && (
           <NewProjectDialog clients={clients} />
