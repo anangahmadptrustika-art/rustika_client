@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import imageCompression from "browser-image-compression";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -28,6 +29,9 @@ import {
 import {
   IMAGE_CATEGORIES,
   IMAGE_CATEGORY_LABELS,
+  IMAGE_COMPRESS_MAX_DIMENSION,
+  IMAGE_COMPRESS_MAX_MB,
+  MAX_UPLOAD_BYTES,
   STORAGE_BUCKETS,
   type ImageCategory,
 } from "@/lib/constants";
@@ -84,11 +88,33 @@ export function ImageUploadDialog({ projectId }: { projectId: string }) {
       let ok = 0;
       let fail = 0;
       for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const path = `${projectId}/${category}/${Date.now()}-${i}-${sanitize(file.name)}`;
+        const original = files[i];
+
+        // Auto-compress photos (resize + recompress) before upload.
+        let blob: Blob = original;
+        try {
+          blob = await imageCompression(original, {
+            maxSizeMB: IMAGE_COMPRESS_MAX_MB,
+            maxWidthOrHeight: IMAGE_COMPRESS_MAX_DIMENSION,
+            useWebWorker: true,
+          });
+        } catch {
+          blob = original;
+        }
+
+        if (blob.size > MAX_UPLOAD_BYTES) {
+          fail++;
+          setDone(i + 1);
+          continue;
+        }
+
+        const path = `${projectId}/${category}/${Date.now()}-${i}-${sanitize(original.name)}`;
         const { error: upErr } = await supabase.storage
           .from(STORAGE_BUCKETS.images)
-          .upload(path, file, { upsert: false });
+          .upload(path, blob, {
+            upsert: false,
+            contentType: blob.type || original.type || "image/jpeg",
+          });
         if (upErr) {
           fail++;
           setDone(i + 1);
@@ -97,9 +123,9 @@ export function ImageUploadDialog({ projectId }: { projectId: string }) {
         const { error: insErr } = await supabase.from("project_images").insert({
           project_id: projectId,
           category,
-          title: file.name,
+          title: original.name,
           file_path: path,
-          file_size: file.size,
+          file_size: blob.size,
           tags: tagList.length ? tagList : null,
           taken_at: new Date().toISOString(),
           uploaded_by: user.id,

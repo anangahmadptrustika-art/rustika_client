@@ -25,8 +25,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { STORAGE_BUCKETS, type DocumentCategory } from "@/lib/constants";
-import { formatBytes } from "@/lib/utils";
+import {
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_MB,
+  STORAGE_BUCKETS,
+  type DocumentCategory,
+} from "@/lib/constants";
+import { cn, formatBytes } from "@/lib/utils";
 
 function sanitize(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -87,8 +92,17 @@ export function DocumentUploadDialog({
 
       let ok = 0;
       let fail = 0;
+      let tooBig = 0;
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+
+        if (file.size > MAX_UPLOAD_BYTES) {
+          tooBig++;
+          fail++;
+          setDone(i + 1);
+          continue;
+        }
+
         const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
         const path = `${projectId}/${category}/${Date.now()}-${i}-${sanitize(file.name)}`;
 
@@ -139,13 +153,19 @@ export function DocumentUploadDialog({
         });
       }
 
+      const overMsg = tooBig
+        ? ` ${tooBig} file melebihi batas ${MAX_UPLOAD_MB} MB.`
+        : "";
+
       if (ok > 0) {
-        toast.success(`${ok} file berhasil diunggah${fail ? `, ${fail} gagal` : ""}.`);
+        toast.success(
+          `${ok} file berhasil diunggah${fail ? `, ${fail} gagal.` : "."}${overMsg}`
+        );
         setOpen(false);
         reset();
         router.refresh();
       } else {
-        toast.error("Gagal mengunggah file.");
+        toast.error(`Gagal mengunggah file.${overMsg}`);
       }
     } catch (e) {
       toast.error("Terjadi kesalahan: " + (e as Error).message);
@@ -174,7 +194,7 @@ export function DocumentUploadDialog({
         <DialogHeader>
           <DialogTitle>{label}</DialogTitle>
           <DialogDescription>
-            Pilih satu atau banyak file sekaligus. Disimpan aman di Supabase Storage.
+            Pilih satu atau banyak file sekaligus. Maks {MAX_UPLOAD_MB} MB per file.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -203,8 +223,16 @@ export function DocumentUploadDialog({
                   >
                     <span className="truncate">{f.name}</span>
                     <span className="flex shrink-0 items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
+                      <span
+                        className={cn(
+                          "text-xs",
+                          f.size > MAX_UPLOAD_BYTES
+                            ? "font-medium text-destructive"
+                            : "text-muted-foreground"
+                        )}
+                      >
                         {formatBytes(f.size)}
+                        {f.size > MAX_UPLOAD_BYTES ? ` · maks ${MAX_UPLOAD_MB}MB` : ""}
                       </span>
                       {!uploading && (
                         <button
