@@ -1,18 +1,22 @@
 import { NextResponse } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
 import { getAllDocuments, getProjects } from "@/lib/queries";
+import { createAdminClient } from "@/lib/supabase/server";
 import { AI_ENABLED } from "@/lib/config";
+import { STORAGE_BUCKETS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
+
+const MAX_DOC_BYTES = 20 * 1024 * 1024; // ~20MB safety cap for AI analysis
 
 /**
- * AI Assistant endpoint.
+ * AI Assistant endpoint. Uses the Anthropic Claude API when ANTHROPIC_API_KEY
+ * is set; otherwise falls back to deterministic search.
  *
- * Features: progress summaries, document Q&A, natural-language document search,
- * and weekly/monthly report generation. Uses the Anthropic Claude API when
- * ANTHROPIC_API_KEY is set; otherwise falls back to a deterministic search over
- * the portal data so the feature is demonstrable without a key.
+ * If `documentId` is provided, the referenced PDF/image is downloaded from
+ * Storage and sent to Claude for direct analysis (summary, extraction, Q&A).
  */
 export async function POST(req: Request) {
   const profile = await getCurrentProfile();
@@ -20,17 +24,71 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { message } = (await req.json()) as { message?: string };
+  const { message, documentId } = (await req.json()) as {
+    message?: string;
+    documentId?: string;
+  };
   if (!message?.trim()) {
     return NextResponse.json({ error: "Empty message" }, { status: 400 });
   }
 
-  // Build lightweight portal context for grounding.
-  const [projects, documents] = await Promise.all([
-    getProjects(),
-    getAllDocuments(),
-  ]);
+  if (!AI_ENABLED) {
+    if (documentId) {
+      return NextResponse.json({
+        reply:
+          "Analisa dokumen membutuhkan AI aktif. Atur `ANTHROPIC_API_KEY` di Vercel lalu redeploy.",
+        mode: "demo",
+      });
+    }
+    const [projects, documents] = await Promise.all([getProjects(), getAllDocuments()]);
+    return NextResponse.json({
+      reply: localAnswer(message, projects, documents),
+      mode: "demo",
+    });
+  }
 
+  // ── Build a document block if a document is attached ──
+  let docBlock:
+    | { type: "document" | "image"; source: { type: "base64"; media_type: string; data: string } }
+    | null = null;
+  let docNote = "";
+
+  if (documentId) {
+    const loaded = await loadDocument(documentId);
+    if (!loaded) {
+      return NextResponse.json({ reply: "Dokumen tidak ditemukan." }, { status: 200 });
+    }
+    if (loaded.size > MAX_DOC_BYTES) {
+      return NextResponse.json(
+        { reply: "Dokumen terlalu besar untuk dianalisa AI (maks ~20 MB)." },
+        { status: 200 }
+      );
+    }
+    const ext = (loaded.doc.file_type || "").toLowerCase();
+    if (ext === "pdf") {
+      docBlock = {
+        type: "document",
+        source: { type: "base64", media_type: "application/pdf", data: loaded.base64 },
+      };
+    } else if (["jpg", "jpeg"].includes(ext)) {
+      docBlock = { type: "image", source: { type: "base64", media_type: "image/jpeg", data: loaded.base64 } };
+    } else if (ext === "png") {
+      docBlock = { type: "image", source: { type: "base64", media_type: "image/png", data: loaded.base64 } };
+    } else if (ext === "webp") {
+      docBlock = { type: "image", source: { type: "base64", media_type: "image/webp", data: loaded.base64 } };
+    } else {
+      return NextResponse.json(
+        {
+          reply: `Tipe file ".${ext}" belum bisa dianalisa langsung. AI dapat menganalisa PDF dan gambar (JPG/PNG).`,
+        },
+        { status: 200 }
+      );
+    }
+    docNote = `\n\nCatatan: pengguna melampirkan dokumen "${loaded.doc.name}" untuk dianalisa.`;
+  }
+
+  // ── Portal context for grounding (text) ──
+  const [projects, documents] = await Promise.all([getProjects(), getAllDocuments()]);
   const context = [
     "PROYEK:",
     ...projects.map(
@@ -39,19 +97,18 @@ export async function POST(req: Request) {
     ),
     "",
     "DOKUMEN:",
-    ...documents.map(
-      (d) =>
-        `- "${d.name}" (v${d.version}, ${d.category}${d.subcategory ? "/" + d.subcategory : ""}) pada proyek ${d.project_name}`
-    ),
+    ...documents
+      .slice(0, 200)
+      .map(
+        (d) =>
+          `- "${d.name}" (v${d.version}, ${d.category}${d.subcategory ? "/" + d.subcategory : ""}) pada proyek ${d.project_name}`
+      ),
   ].join("\n");
 
-  // ── Fallback (no API key): deterministic keyword retrieval ──
-  if (!AI_ENABLED) {
-    const reply = localAnswer(message, projects, documents);
-    return NextResponse.json({ reply, mode: "demo" });
-  }
+  const userContent = docBlock
+    ? [docBlock, { type: "text", text: message }]
+    : message;
 
-  // ── Anthropic Claude API ──
   try {
     const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -63,29 +120,32 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 1024,
+        max_tokens: 2048,
         system:
           "Anda adalah AI Assistant untuk portal manajemen proyek Rustika Consultant. " +
-          "Jawab dalam Bahasa Indonesia, ringkas dan profesional. Gunakan KONTEKS PORTAL " +
-          "berikut untuk menemukan dokumen/proyek yang relevan, membuat ringkasan progres, " +
-          "atau menyusun laporan mingguan/bulanan. Jika informasi tidak ada di konteks, " +
-          "katakan dengan jujur.\n\n=== KONTEKS PORTAL ===\n" +
+          "Jawab dalam Bahasa Indonesia, ringkas, terstruktur, dan profesional. Gunakan " +
+          "KONTEKS PORTAL untuk menemukan dokumen/proyek, membuat ringkasan progres, atau " +
+          "menyusun laporan. Jika ada dokumen dilampirkan, baca & analisa isinya (ringkasan, " +
+          "poin penting, ekstraksi data, atau jawab pertanyaan tentang dokumen tsb). Jika " +
+          "informasi tidak ada, katakan dengan jujur." +
+          docNote +
+          "\n\n=== KONTEKS PORTAL ===\n" +
           context,
-        messages: [{ role: "user", content: message }],
+        messages: [{ role: "user", content: userContent }],
       }),
     });
 
     if (!res.ok) {
       const detail = await res.text();
       return NextResponse.json(
-        { reply: `Gagal menghubungi AI: ${res.status}. ${detail.slice(0, 200)}` },
+        { reply: `Gagal menghubungi AI: ${res.status}. ${detail.slice(0, 300)}` },
         { status: 200 }
       );
     }
 
     const data = await res.json();
     const reply =
-      data?.content?.map((c: { text?: string }) => c.text).join("\n") ??
+      data?.content?.map((c: { text?: string }) => c.text).filter(Boolean).join("\n") ??
       "Maaf, tidak ada jawaban.";
     return NextResponse.json({ reply, mode: "live" });
   } catch (e) {
@@ -93,6 +153,28 @@ export async function POST(req: Request) {
       { reply: `Terjadi kesalahan: ${(e as Error).message}` },
       { status: 200 }
     );
+  }
+}
+
+async function loadDocument(documentId: string) {
+  try {
+    const admin = createAdminClient();
+    const { data: doc } = await admin
+      .from("project_documents")
+      .select("*")
+      .eq("id", documentId)
+      .maybeSingle();
+    if (!doc) return null;
+    const { data: signed } = await admin.storage
+      .from(STORAGE_BUCKETS.documents)
+      .createSignedUrl(doc.file_path, 120);
+    if (!signed?.signedUrl) return null;
+    const res = await fetch(signed.signedUrl);
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    return { doc, base64: buf.toString("base64"), size: buf.length };
+  } catch {
+    return null;
   }
 }
 
