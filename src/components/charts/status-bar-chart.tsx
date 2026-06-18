@@ -2,9 +2,11 @@
 
 import {
   Bar,
-  BarChart,
+  CartesianGrid,
   Cell,
+  ComposedChart,
   LabelList,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -41,28 +43,32 @@ export function StatusBarChart({
 
   const total = filtered.reduce((s, d) => s + d.value, 0);
   const max = Math.max(...filtered.map((d) => d.value), 1);
-  const height = Math.max(160, filtered.length * 48 + 24);
 
   return (
     <div className="space-y-3">
-      <ResponsiveContainer width="100%" height={height}>
-        <BarChart
+      <ResponsiveContainer width="100%" height={280}>
+        <ComposedChart
           data={filtered}
-          layout="vertical"
-          margin={{ top: 4, right: 40, left: 8, bottom: 4 }}
-          barCategoryGap="28%"
+          margin={{ top: 28, right: 16, left: 16, bottom: 8 }}
         >
-          <XAxis type="number" hide domain={[0, max * 1.15]} />
-          <YAxis
-            type="category"
+          <CartesianGrid
+            strokeDasharray="3 3"
+            className="stroke-border"
+            vertical={false}
+          />
+          <XAxis
             dataKey="name"
             tickLine={false}
             axisLine={false}
-            width={150}
-            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+            interval={0}
+            angle={-15}
+            textAnchor="end"
+            height={48}
+            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
           />
+          <YAxis hide domain={[0, max * 1.2]} />
           <Tooltip
-            cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
+            cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
             contentStyle={{
               borderRadius: 8,
               border: "1px solid hsl(var(--border))",
@@ -74,19 +80,31 @@ export function StatusBarChart({
               "Jumlah",
             ]}
           />
-          <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={28}>
+          <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={56}>
             {filtered.map((d) => (
               <Cell key={d.name} fill={STATUS_COLORS[d.name] ?? "#8b5cf6"} />
             ))}
+          </Bar>
+          {/* Line connecting the top of each bar */}
+          <Line
+            type="linear"
+            dataKey="value"
+            stroke="hsl(var(--foreground))"
+            strokeWidth={2}
+            strokeOpacity={0.55}
+            dot={{ r: 3, fill: "hsl(var(--foreground))", strokeWidth: 0 }}
+            activeDot={{ r: 5 }}
+          >
             <LabelList
               dataKey="value"
-              position="right"
+              position="top"
+              offset={10}
               fill="hsl(var(--foreground))"
               fontSize={12}
               fontWeight={600}
             />
-          </Bar>
-        </BarChart>
+          </Line>
+        </ComposedChart>
       </ResponsiveContainer>
 
       <p className="text-center text-xs text-muted-foreground">
