@@ -8,25 +8,31 @@ export const maxDuration = 60;
 /**
  * Google Sheet → app sync endpoint.
  *
- * The bound Apps Script ("Sync ke Aplikasi") POSTs project rows here with a
- * shared secret header. We UPSERT projects by `code` (never delete) and, when
- * the progress value changes, write a progress report — the DB trigger then
- * keeps projects.progress in sync (same path the app uses). Clients are matched
- * by name and auto-created when missing.
+ * Body: { projects: ProjectRow[], progress: ProgressRow[] }
+ *   - projects: upserted by `code` (never deleted); clients matched by name and
+ *     auto-created when missing.
+ *   - progress: dated progress entries upserted by (project code + date). Each
+ *     becomes a progress report on that date — feeding the dashboard/portal
+ *     charts — and the DB trigger keeps projects.progress at the latest date.
  *
  * Auth: header `x-sync-secret` must equal env SYNC_SECRET.
  */
-type SheetRow = {
+type ProjectRow = {
   client?: string;
   code?: string;
   name?: string;
   type?: string;
   status?: string;
-  progress?: number | string;
   location?: string;
   start_date?: string;
   end_date?: string;
   contract_value?: number | string;
+};
+
+type ProgressRow = {
+  code?: string;
+  date?: string;
+  progress?: number | string;
   note?: string;
 };
 
@@ -67,43 +73,45 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let rows: SheetRow[];
+  let projects: ProjectRow[] = [];
+  let progress: ProgressRow[] = [];
   try {
     const body = await req.json();
-    rows = Array.isArray(body) ? body : body?.rows;
-    if (!Array.isArray(rows)) throw new Error("not an array");
+    if (Array.isArray(body)) {
+      projects = body; // backward-compatible: bare array = projects
+    } else {
+      projects = Array.isArray(body?.projects) ? body.projects : [];
+      progress = Array.isArray(body?.progress) ? body.progress : [];
+    }
   } catch {
     return NextResponse.json(
-      { error: "Body harus array baris (atau { rows: [...] })." },
+      { error: "Body harus { projects: [...], progress: [...] }." },
       { status: 400 }
     );
   }
 
   const admin = createAdminClient();
-  const today = new Date().toISOString().slice(0, 10);
-  let created = 0;
-  let updated = 0;
-  let skipped = 0;
   const errors: string[] = [];
 
-  // Cache existing clients by lowercased name (auto-create on miss).
+  // ── Clients cache (auto-create on miss) ──
   const { data: clientRows } = await admin.from("clients").select("id, name");
   const clientByName = new Map<string, string>();
   for (const c of clientRows ?? []) {
     clientByName.set(String(c.name).trim().toLowerCase(), c.id as string);
   }
 
-  for (const row of rows) {
+  // ── 1) Projects (fields only; progress comes from the progress rows) ──
+  const proj = { created: 0, updated: 0, skipped: 0 };
+  for (const row of projects) {
     try {
       const code = String(row.code ?? "").trim();
       const name = String(row.name ?? "").trim();
       const clientName = String(row.client ?? "").trim();
       if (!code || !name || !clientName) {
-        skipped++;
+        proj.skipped++;
         continue;
       }
 
-      // Resolve / auto-create client.
       let clientId = clientByName.get(clientName.toLowerCase());
       if (!clientId) {
         const { data: newClient, error: cErr } = await admin
@@ -113,7 +121,7 @@ export async function POST(req: Request) {
           .single();
         if (cErr || !newClient) {
           errors.push(`Client "${clientName}" gagal dibuat`);
-          skipped++;
+          proj.skipped++;
           continue;
         }
         clientId = newClient.id as string;
@@ -130,58 +138,96 @@ export async function POST(req: Request) {
         end_date: dateOrNull(row.end_date),
         contract_value: parseNumber(row.contract_value),
       };
-      const sheetProgress = clampProgress(row.progress);
-      const note = String(row.note ?? "").trim() || "Pembaruan via Spreadsheet";
 
       const { data: existing } = await admin
         .from("projects")
-        .select("id, progress")
+        .select("id")
         .eq("code", code)
         .maybeSingle();
 
       if (existing) {
         await admin.from("projects").update(fields).eq("id", existing.id);
-        if (sheetProgress !== Number(existing.progress)) {
-          await admin.from("project_progress").insert({
-            project_id: existing.id,
-            report_date: today,
-            progress_percent: sheetProgress,
-            description: note,
-          });
-        }
-        updated++;
+        proj.updated++;
       } else {
-        const { data: ins, error: pErr } = await admin
+        const { error: pErr } = await admin
           .from("projects")
-          .insert({ code, progress: sheetProgress, ...fields })
-          .select("id")
-          .single();
-        if (pErr || !ins) {
-          errors.push(`Proyek "${code}" gagal dibuat: ${pErr?.message ?? "?"}`);
-          skipped++;
+          .insert({ code, ...fields });
+        if (pErr) {
+          errors.push(`Proyek "${code}" gagal dibuat: ${pErr.message}`);
+          proj.skipped++;
           continue;
         }
-        if (sheetProgress > 0) {
-          await admin.from("project_progress").insert({
-            project_id: ins.id,
-            report_date: today,
-            progress_percent: sheetProgress,
-            description: note,
-          });
-        }
-        created++;
+        proj.created++;
       }
     } catch (e) {
       errors.push((e as Error).message);
-      skipped++;
+      proj.skipped++;
+    }
+  }
+
+  // ── 2) Dated progress entries (upsert by project code + date) ──
+  const prog = { inserted: 0, updated: 0, skipped: 0 };
+  if (progress.length) {
+    const { data: allProjects } = await admin.from("projects").select("id, code");
+    const projectByCode = new Map<string, string>();
+    for (const p of allProjects ?? []) {
+      projectByCode.set(String(p.code).trim(), p.id as string);
+    }
+
+    for (const row of progress) {
+      try {
+        const code = String(row.code ?? "").trim();
+        const date = dateOrNull(row.date);
+        if (!code || !date) {
+          prog.skipped++;
+          continue;
+        }
+        const projectId = projectByCode.get(code);
+        if (!projectId) {
+          errors.push(`Progress: kode "${code}" tidak ditemukan`);
+          prog.skipped++;
+          continue;
+        }
+        const value = clampProgress(row.progress);
+        const note = String(row.note ?? "").trim() || "Pembaruan via Spreadsheet";
+
+        const { data: ex } = await admin
+          .from("project_progress")
+          .select("id, progress_percent")
+          .eq("project_id", projectId)
+          .eq("report_date", date)
+          .maybeSingle();
+
+        if (ex) {
+          if (Number(ex.progress_percent) !== value) {
+            await admin
+              .from("project_progress")
+              .update({ progress_percent: value, description: note })
+              .eq("id", ex.id);
+            prog.updated++;
+          } else {
+            prog.skipped++;
+          }
+        } else {
+          await admin.from("project_progress").insert({
+            project_id: projectId,
+            report_date: date,
+            progress_percent: value,
+            description: note,
+          });
+          prog.inserted++;
+        }
+      } catch (e) {
+        errors.push((e as Error).message);
+        prog.skipped++;
+      }
     }
   }
 
   return NextResponse.json({
     ok: true,
-    created,
-    updated,
-    skipped,
+    projects: proj,
+    progress: prog,
     errors: errors.slice(0, 20),
   });
 }
