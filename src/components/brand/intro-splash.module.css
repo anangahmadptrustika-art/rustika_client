@@ -1,0 +1,172 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  background: #0b0c0e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fadeOut {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* faint drafting grid — texture, not decoration */
+.overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 64px 64px;
+  pointer-events: none;
+}
+
+.content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  max-width: 96vw;
+}
+
+.wordmarkWrap {
+  overflow: hidden;
+  padding: 0.06em 0;
+}
+
+.wordmark {
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: #f4f3ef;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1;
+  font-size: clamp(1.2rem, 6.5vw, 5.5rem);
+  opacity: 0;
+  transform: translateY(0.45em);
+  animation: wordRise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
+}
+
+.datum {
+  position: relative;
+  width: min(62vw, 720px);
+  height: 18px;
+  margin-top: max(2vw, 14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #ffaa1e;
+  transform: scaleX(0);
+  transform-origin: center;
+  animation: lineGrow 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
+}
+
+.tick {
+  position: absolute;
+  width: 2px;
+  height: 12px;
+  background: #ffaa1e;
+  transform: scaleY(0.3);
+  opacity: 0;
+  animation: tickIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards;
+}
+
+.tickL {
+  left: 0;
+}
+.tickR {
+  right: 0;
+}
+
+.tagline {
+  font-weight: 400;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  color: #8a8c90;
+  text-transform: uppercase;
+  margin-top: max(2vw, 14px);
+  font-size: clamp(0.6rem, 1.45vw, 1rem);
+  text-align: center;
+  opacity: 0;
+  animation: tagIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.9s forwards;
+}
+
+.label {
+  position: absolute;
+  left: 24px;
+  bottom: 20px;
+  font-size: clamp(0.5rem, 0.95vw, 0.8rem);
+  letter-spacing: 0.18em;
+  color: #f4f3ef;
+  opacity: 0.3;
+  text-transform: uppercase;
+}
+
+.skip {
+  position: absolute;
+  right: 20px;
+  bottom: 18px;
+  font-size: clamp(0.55rem, 1vw, 0.78rem);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8a8c90;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.skip:hover {
+  color: #f4f3ef;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+@keyframes wordRise {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes lineGrow {
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes tickIn {
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+@keyframes tagIn {
+  to {
+    opacity: 0.85;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wordmark,
+  .line,
+  .tick,
+  .tagline {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+  }
+}

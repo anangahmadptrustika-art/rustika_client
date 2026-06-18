@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Archivo, Space_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { IntroSplash } from "@/components/brand/intro-splash";
 import { APP_NAME } from "@/lib/constants";
 import "./globals.css";
 
@@ -10,6 +11,10 @@ const inter = Inter({
   variable: "--font-sans",
   display: "swap",
 });
+
+// Fonts used only by the brand intro reveal.
+const archivo = Archivo({ subsets: ["latin"], weight: ["900"], display: "swap" });
+const spaceMono = Space_Mono({ subsets: ["latin"], weight: ["400"], display: "swap" });
 
 export const metadata: Metadata = {
   title: {
@@ -53,6 +58,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <IntroSplash displayClass={archivo.className} monoClass={spaceMono.className} />
           {children}
           <Toaster richColors position="top-right" />
         </ThemeProvider>
