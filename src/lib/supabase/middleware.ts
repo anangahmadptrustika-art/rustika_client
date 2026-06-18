@@ -4,7 +4,7 @@ import { DEMO_MODE } from "@/lib/config";
 
 type CookiesToSet = Parameters<SetAllCookies>[0];
 
-const PUBLIC_PATHS = ["/login", "/auth", "/api/auth", "/portal"];
+const PUBLIC_PATHS = ["/login", "/auth", "/api/auth", "/api/sync", "/portal"];
 const MARKETING_PATHS = ["/"];
 
 /**
