@@ -31,6 +31,8 @@ import { Progress } from "@/components/ui/progress";
 import { ProgressAreaChart } from "@/components/charts/progress-area-chart";
 import { StatusBarChart } from "@/components/charts/status-bar-chart";
 import { DivisionBarChart } from "@/components/charts/division-bar-chart";
+import { ProjectMap } from "@/components/charts/project-map";
+import { SULSEL_REGENCIES, matchRegency } from "@/components/charts/sulsel-geo";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Stagger, StaggerItem } from "@/components/motion/motion-primitives";
 import {
@@ -58,6 +60,21 @@ export default async function DashboardPage() {
     name: PROJECT_STATUS_LABELS[s],
     value: projects.filter((p) => p.status === s).length,
   }));
+
+  // Map project locations onto South Sulawesi regencies for the map card.
+  const regencyCount = new Map<string, number>();
+  for (const p of projects) {
+    const rg = matchRegency(p.location);
+    if (rg) regencyCount.set(rg.name, (regencyCount.get(rg.name) ?? 0) + 1);
+  }
+  const regencyData = SULSEL_REGENCIES.filter((rg) => regencyCount.get(rg.name)).map(
+    (rg) => ({
+      name: rg.name,
+      lat: rg.lat,
+      lng: rg.lng,
+      count: regencyCount.get(rg.name)!,
+    })
+  );
 
   return (
     <div className="space-y-6">
@@ -124,6 +141,18 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Sebaran Proyek — Sulawesi Selatan</CardTitle>
+          <CardDescription>
+            Lokasi proyek dipetakan per kabupaten/kota
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProjectMap data={regencyData} />
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card>
