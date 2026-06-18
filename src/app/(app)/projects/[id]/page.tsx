@@ -67,20 +67,17 @@ export default async function ProjectDetailPage({
   const { id } = await params;
   const { tab } = await searchParams;
   const profile = await requireProfile();
-  const project = await getProjectById(id);
-  if (!project) notFound();
 
   const showFinance = canViewFinance(profile.role);
   const canEdit = can(profile.role, "document:upload");
   const canDeleteDoc = can(profile.role, "document:delete");
   const canEditProject = can(profile.role, "project:edit");
-  const clients = canEditProject ? await getClients() : [];
 
+  // One parallel batch (co-located with the DB) instead of sequential queries.
   const [
-    kajian,
-    simbg,
-    survey,
-    drone,
+    project,
+    clients,
+    allDocs,
     images,
     progress,
     area,
@@ -89,10 +86,9 @@ export default async function ProjectDetailPage({
     comments,
     activities,
   ] = await Promise.all([
-    getProjectDocuments(id, "kajian_teknis"),
-    getProjectDocuments(id, "simbg"),
-    getProjectDocuments(id, "survey"),
-    getProjectDocuments(id, "drone"),
+    getProjectById(id),
+    getClients(),
+    getProjectDocuments(id),
     getProjectImages(id),
     getProjectProgress(id),
     getAreaData(id),
@@ -102,7 +98,13 @@ export default async function ProjectDetailPage({
     getActivities(id),
   ]);
 
-  const droneImages = images.filter(() => true); // drone gallery reuses images in demo
+  if (!project) notFound();
+
+  const kajian = allDocs.filter((d) => d.category === "kajian_teknis");
+  const simbg = allDocs.filter((d) => d.category === "simbg");
+  const survey = allDocs.filter((d) => d.category === "survey");
+  const drone = allDocs.filter((d) => d.category === "drone");
+  const droneImages = images;
 
   // ── Tab definitions (finance hidden from staff) ──
   const tabs: ProjectTabDef[] = [
