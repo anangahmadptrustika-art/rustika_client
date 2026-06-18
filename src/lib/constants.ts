@@ -185,10 +185,10 @@ export const STORAGE_BUCKETS = {
 } as const;
 
 /**
- * Max upload size per file (MB). Supabase Free plan caps uploads at 50 MB;
- * raise this after upgrading the plan AND the project's storage limit.
+ * Max upload size per file (MB). Cloudinary's free plan caps a single
+ * upload at 10 MB; raise this if the storage plan is upgraded.
  */
-export const MAX_UPLOAD_MB = 50;
+export const MAX_UPLOAD_MB = 10;
 export const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 
 /** Target after image compression (large photos shrink automatically). */

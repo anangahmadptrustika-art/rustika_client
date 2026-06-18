@@ -34,7 +34,7 @@ import {
   MAX_UPLOAD_BYTES,
   type ImageCategory,
 } from "@/lib/constants";
-import { createUploadUrl } from "@/app/(app)/projects/[id]/storage-actions";
+import { createUploadParams } from "@/app/(app)/projects/[id]/storage-actions";
 import { formatBytes } from "@/lib/utils";
 
 export function ImageUploadDialog({ projectId }: { projectId: string }) {
@@ -104,38 +104,40 @@ export function ImageUploadDialog({ projectId }: { projectId: string }) {
           continue;
         }
 
-        const contentType = blob.type || original.type || "image/jpeg";
-        const signed = await createUploadUrl({
+        const signed = await createUploadParams({
           kind: "image",
           projectId,
           category,
           filename: original.name,
-          contentType,
         });
-        if (!signed.ok || !signed.url || !signed.key) {
+        if (!signed.ok) {
           fail++;
           setDone(i + 1);
           continue;
         }
-        const put = await fetch(signed.url, {
-          method: "PUT",
-          headers: { "Content-Type": contentType },
-          body: blob,
-        });
-        if (!put.ok) {
+        const form = new FormData();
+        form.append("file", blob, original.name);
+        form.append("api_key", signed.apiKey);
+        form.append("timestamp", String(signed.timestamp));
+        form.append("public_id", signed.publicId);
+        form.append("signature", signed.signature);
+        const up = await fetch(signed.uploadUrl, { method: "POST", body: form });
+        if (!up.ok) {
           fail++;
           setDone(i + 1);
           continue;
         }
+        const result = (await up.json()) as { public_id: string; secure_url: string };
         const { error: insErr } = await supabase.from("project_images").insert({
           project_id: projectId,
           category,
           title: original.name,
-          file_path: signed.key,
+          file_path: result.public_id,
+          file_url: result.secure_url,
           file_size: blob.size,
           tags: tagList.length ? tagList : null,
           taken_at: new Date().toISOString(),
-          storage: "r2",
+          storage: "cloudinary",
           uploaded_by: user.id,
         });
         if (insErr) fail++;
@@ -185,7 +187,7 @@ export function ImageUploadDialog({ projectId }: { projectId: string }) {
         <DialogHeader>
           <DialogTitle>Upload Foto</DialogTitle>
           <DialogDescription>
-            Pilih satu atau banyak foto sekaligus. Disimpan aman di Supabase Storage.
+            Pilih satu atau banyak foto sekaligus. Foto otomatis dikompres sebelum diunggah.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

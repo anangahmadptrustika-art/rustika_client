@@ -124,8 +124,10 @@ export async function getProjectImages(projectId: string): Promise<ProjectImage[
 
   const map = new Map<string, string>();
 
-  // Supabase-stored images: batch-sign.
-  const supaPaths = rows.filter((r) => r.storage !== "r2").map((r) => r.file_path);
+  // Supabase-stored images: batch-sign. (r2 & cloudinary resolve elsewhere.)
+  const supaPaths = rows
+    .filter((r) => r.storage !== "r2" && r.storage !== "cloudinary")
+    .map((r) => r.file_path);
   if (supaPaths.length) {
     const { data: signed } = await supabase.storage
       .from(STORAGE_BUCKETS.images)

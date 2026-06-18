@@ -7,6 +7,7 @@ import { can } from "@/lib/rbac";
 import { DEMO_MODE } from "@/lib/config";
 import { logActivity } from "@/lib/activity";
 import { r2Delete } from "@/lib/r2";
+import { cldDelete } from "@/lib/cloudinary";
 import { STORAGE_BUCKETS, type ApprovalStatus } from "@/lib/constants";
 
 export type ActionResult = { ok: boolean; message: string };
@@ -32,7 +33,13 @@ export async function deleteDocument(input: {
   const storage = doc?.storage ?? "supabase";
   const path = doc?.file_path ?? input.filePath;
   if (path) {
-    if (storage === "r2") {
+    if (storage === "cloudinary") {
+      try {
+        await cldDelete(path, "raw");
+      } catch {
+        /* ignore */
+      }
+    } else if (storage === "r2") {
       try {
         await r2Delete(path);
       } catch {
@@ -80,7 +87,13 @@ export async function deleteProjectImage(input: {
   const storage = img?.storage ?? "supabase";
   const path = img?.file_path ?? input.filePath;
   if (path) {
-    if (storage === "r2") {
+    if (storage === "cloudinary") {
+      try {
+        await cldDelete(path, "image");
+      } catch {
+        /* ignore */
+      }
+    } else if (storage === "r2") {
       try {
         await r2Delete(path);
       } catch {

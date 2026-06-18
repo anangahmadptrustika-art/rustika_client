@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { AI_ENABLED } from "@/lib/config";
 import { STORAGE_BUCKETS } from "@/lib/constants";
 import { r2GetBytes } from "@/lib/r2";
+import { cldGetBytes } from "@/lib/cloudinary";
 import { formatCurrency } from "@/lib/utils";
 
 export const runtime = "nodejs";
@@ -168,7 +169,10 @@ async function loadDocument(documentId: string) {
     if (!doc) return null;
 
     let buf: Buffer;
-    if (doc.storage === "r2") {
+    if (doc.storage === "cloudinary") {
+      if (!doc.file_url) return null;
+      buf = await cldGetBytes(doc.file_url);
+    } else if (doc.storage === "r2") {
       buf = await r2GetBytes(doc.file_path);
     } else {
       const { data: signed } = await admin.storage
