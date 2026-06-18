@@ -30,7 +30,7 @@ import {
   MAX_UPLOAD_MB,
   type DocumentCategory,
 } from "@/lib/constants";
-import { createUploadUrl } from "@/app/(app)/projects/[id]/storage-actions";
+import { createUploadParams } from "@/app/(app)/projects/[id]/storage-actions";
 import { cn, formatBytes } from "@/lib/utils";
 
 export function DocumentUploadDialog({
@@ -100,31 +100,34 @@ export function DocumentUploadDialog({
         }
 
         const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-        const contentType = file.type || "application/octet-stream";
 
-        // 1. Get a presigned R2 URL, 2. upload bytes straight to R2.
-        const signed = await createUploadUrl({
+        // 1. Get a signed Cloudinary payload, 2. upload the file straight to
+        // Cloudinary (same-origin server action + CORS-friendly upload = no
+        // CORS config needed).
+        const signed = await createUploadParams({
           kind: "document",
           projectId,
           category,
           filename: file.name,
-          contentType,
         });
-        if (!signed.ok || !signed.url || !signed.key) {
+        if (!signed.ok) {
           fail++;
           setDone(i + 1);
           continue;
         }
-        const put = await fetch(signed.url, {
-          method: "PUT",
-          headers: { "Content-Type": contentType },
-          body: file,
-        });
-        if (!put.ok) {
+        const form = new FormData();
+        form.append("file", file);
+        form.append("api_key", signed.apiKey);
+        form.append("timestamp", String(signed.timestamp));
+        form.append("public_id", signed.publicId);
+        form.append("signature", signed.signature);
+        const up = await fetch(signed.uploadUrl, { method: "POST", body: form });
+        if (!up.ok) {
           fail++;
           setDone(i + 1);
           continue;
         }
+        const result = (await up.json()) as { public_id: string; secure_url: string };
 
         const docName = file.name;
         const { count } = await supabase
@@ -138,12 +141,13 @@ export function DocumentUploadDialog({
           category,
           subcategory: subcategory || null,
           name: docName,
-          file_path: signed.key,
+          file_path: result.public_id,
+          file_url: result.secure_url,
           file_type: ext,
           file_size: file.size,
           version: (count ?? 0) + 1,
           description: description.trim() || null,
-          storage: "r2",
+          storage: "cloudinary",
           uploaded_by: user.id,
         });
         if (insErr) fail++;

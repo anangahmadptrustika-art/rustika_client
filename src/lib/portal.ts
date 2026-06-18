@@ -165,7 +165,9 @@ async function signByStorage(
   rows: { file_path: string; storage: string }[]
 ): Promise<Map<string, string>> {
   const map = new Map<string, string>();
-  const supa = rows.filter((r) => r.storage !== "r2").map((r) => r.file_path);
+  const supa = rows
+    .filter((r) => r.storage !== "r2" && r.storage !== "cloudinary")
+    .map((r) => r.file_path);
   if (supa.length) {
     try {
       const { data } = await admin.storage.from(bucket).createSignedUrls(supa, 3600);
@@ -194,7 +196,7 @@ async function signByStorage(
 async function signDocuments(admin: Admin, docs: ProjectDocument[]) {
   if (docs.length === 0) return docs;
   const map = await signByStorage(admin, STORAGE_BUCKETS.documents, docs);
-  return docs.map((d) => ({ ...d, file_url: map.get(d.file_path) ?? null }));
+  return docs.map((d) => ({ ...d, file_url: map.get(d.file_path) ?? d.file_url ?? null }));
 }
 
 async function signImages(admin: Admin, imgs: ProjectImage[]) {
