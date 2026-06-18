@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ProgressAreaChart } from "@/components/charts/progress-area-chart";
-import { StatusDonutChart } from "@/components/charts/status-donut-chart";
+import { StatusBarChart } from "@/components/charts/status-bar-chart";
 import { DivisionBarChart } from "@/components/charts/division-bar-chart";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Stagger, StaggerItem } from "@/components/motion/motion-primitives";
@@ -119,19 +119,7 @@ export default async function DashboardPage() {
                 Belum ada proyek untuk ditampilkan.
               </p>
             ) : (
-              <>
-                <StatusDonutChart data={statusData} />
-                <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                  {statusData
-                    .filter((d) => d.value > 0)
-                    .map((d) => (
-                      <div key={d.name} className="flex items-center justify-between">
-                        <span className="text-muted-foreground">{d.name}</span>
-                        <span className="font-medium">{d.value}</span>
-                      </div>
-                    ))}
-                </div>
-              </>
+              <StatusBarChart data={statusData} />
             )}
           </CardContent>
         </Card>
