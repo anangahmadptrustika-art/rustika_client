@@ -3,14 +3,15 @@ import { CalendarDays, MapPin, User } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ProjectStatusBadge } from "@/components/shared/status-badge";
+import { ShareProjectButton } from "@/components/projects/share-project-button";
 import { formatDate } from "@/lib/utils";
 import type { ProjectWithRelations } from "@/types/database";
 
 export function ProjectCard({ project }: { project: ProjectWithRelations }) {
   return (
-    <Link href={`/projects/${project.id}`} className="group block">
-      <Card className="h-full transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
-        <CardContent className="flex h-full flex-col gap-4 p-5">
+    <Card className="group flex h-full flex-col overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+      <Link href={`/projects/${project.id}`} className="flex flex-1 flex-col">
+        <CardContent className="flex flex-1 flex-col gap-4 p-5">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-xs font-medium text-muted-foreground">
@@ -46,7 +47,11 @@ export function ProjectCard({ project }: { project: ProjectWithRelations }) {
             <Progress value={project.progress} />
           </div>
         </CardContent>
-      </Card>
-    </Link>
+      </Link>
+
+      <div className="flex items-center justify-end border-t px-3 py-1.5">
+        <ShareProjectButton token={project.share_token} projectName={project.name} />
+      </div>
+    </Card>
   );
 }

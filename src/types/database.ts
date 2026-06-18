@@ -69,6 +69,7 @@ export interface Project {
   status: ProjectStatus;
   progress: number;
   description: string | null;
+  share_token?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
