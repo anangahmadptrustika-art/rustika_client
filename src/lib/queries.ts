@@ -265,10 +265,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const projects = await getProjects();
   const invoices = await getInvoices();
 
-  const completed = projects.filter((p) => p.status === "completed").length;
-  const active = projects.filter(
-    (p) => p.status !== "completed" && p.status !== "on_hold"
-  ).length;
+  const completed = projects.filter((p) => p.status === "SLF").length;
+  const active = projects.filter((p) => p.status !== "SLF").length;
   const avg =
     projects.length > 0
       ? Math.round(

@@ -129,7 +129,7 @@ export function NewProjectDialog({ clients }: { clients: Client[] }) {
           </div>
           <div className="space-y-2">
             <Label>Status</Label>
-            <Select name="status" defaultValue="planning">
+            <Select name="status" defaultValue="DESIGN">
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

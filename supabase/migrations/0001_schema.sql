@@ -95,7 +95,7 @@ create table if not exists public.projects (
   start_date         date,
   end_date           date,
   contract_value     numeric,
-  status             project_status not null default 'planning',
+  status             text not null default 'DESIGN',
   progress           numeric(5,2) not null default 0 check (progress between 0 and 100),
   description        text,
   created_by         uuid references auth.users (id) on delete set null,

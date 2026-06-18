@@ -37,39 +37,32 @@ export const STAFF_CATEGORY_LABELS: Record<StaffCategory, string> = {
 
 // ── Project status ───────────────────────────────────────────
 export const PROJECT_STATUSES = [
-  "planning",
-  "survey",
-  "design",
-  "simbg",
-  "review",
-  "construction_support",
-  "completed",
-  "on_hold",
+  "PBG",
+  "SLF",
+  "PBG UNDER CONSTRUCTION",
+  "SLF UNDER CONSTRUCTION",
+  "DESIGN",
+  "SUPERVISI",
 ] as const;
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
-  planning: "Planning",
-  survey: "Survey",
-  design: "Design",
-  simbg: "SIMBG",
-  review: "Review",
-  construction_support: "Construction Support",
-  completed: "Completed",
-  on_hold: "On Hold",
+  PBG: "PBG",
+  SLF: "SLF",
+  "PBG UNDER CONSTRUCTION": "PBG Under Construction",
+  "SLF UNDER CONSTRUCTION": "SLF Under Construction",
+  DESIGN: "Design",
+  SUPERVISI: "Supervisi",
 };
 
 /** Tailwind classes per status badge. */
 export const PROJECT_STATUS_STYLES: Record<ProjectStatus, string> = {
-  planning: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  survey: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  design: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
-  simbg: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-  review: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
-  construction_support:
-    "bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300",
-  completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  on_hold: "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
+  PBG: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+  SLF: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+  "PBG UNDER CONSTRUCTION": "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+  "SLF UNDER CONSTRUCTION": "bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300",
+  DESIGN: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
+  SUPERVISI: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
 };
 
 // ── Project types ────────────────────────────────────────────

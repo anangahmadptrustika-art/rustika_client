@@ -12,13 +12,14 @@ import {
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-export function ProjectStatusBadge({ status }: { status: ProjectStatus }) {
+export function ProjectStatusBadge({ status }: { status: string }) {
+  const label = PROJECT_STATUS_LABELS[status as ProjectStatus] ?? status;
+  const style =
+    PROJECT_STATUS_STYLES[status as ProjectStatus] ??
+    "bg-muted text-muted-foreground";
   return (
-    <Badge
-      variant="outline"
-      className={cn("border-transparent", PROJECT_STATUS_STYLES[status])}
-    >
-      {PROJECT_STATUS_LABELS[status]}
+    <Badge variant="outline" className={cn("border-transparent", style)}>
+      {label}
     </Badge>
   );
 }

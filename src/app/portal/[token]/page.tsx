@@ -19,10 +19,7 @@ export default async function PortalHome({
   if (!client) notFound();
 
   const projects = await getPortalProjects(client.id);
-  const active = projects.filter(
-    (p) => p.status !== "completed" && p.status !== "on_hold"
-  ).length;
-  const completed = projects.filter((p) => p.status === "completed").length;
+  const completed = projects.filter((p) => p.status === "SLF").length;
   const avg =
     projects.length > 0
       ? Math.round(

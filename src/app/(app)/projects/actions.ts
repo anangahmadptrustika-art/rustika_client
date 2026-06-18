@@ -28,7 +28,7 @@ function parseProjectForm(formData: FormData) {
     start_date: String(formData.get("start_date") ?? "") || null,
     end_date: String(formData.get("end_date") ?? "") || null,
     contract_value: numeric("contract_value"),
-    status: (String(formData.get("status") ?? "planning") as ProjectStatus) || "planning",
+    status: (String(formData.get("status") ?? "DESIGN") as ProjectStatus) || "DESIGN",
     description: String(formData.get("description") ?? "") || null,
   };
 }
