@@ -92,6 +92,58 @@ export async function getPortalProjectBundle(
     .maybeSingle();
   if (!project) return null;
 
+  return buildProjectBundle(admin, project as Project);
+}
+
+/**
+ * Resolve a single project from its own share token, for the per-project
+ * portal (/portal/proyek/<token>). Unlike the client portal this is not scoped
+ * to a client — the token itself grants access to exactly one project.
+ */
+export async function getProjectByShareToken(token: string): Promise<Project | null> {
+  if (!token) return null;
+  if (DEMO_MODE) return demo.demoProjects[0] ?? null;
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("projects")
+    .select("*")
+    .eq("share_token", token)
+    .maybeSingle();
+  return (data as Project) ?? null;
+}
+
+export async function getProjectBundleByShareToken(
+  token: string
+): Promise<PortalProjectBundle | null> {
+  if (!token) return null;
+  if (DEMO_MODE) {
+    const project = demo.demoProjects[0];
+    if (!project) return null;
+    return {
+      project,
+      documents: demo.demoDocuments.filter((d) => d.project_id === project.id),
+      images: demo.demoImages.filter((i) => i.project_id === project.id),
+      progress: demo.demoProgress.filter((p) => p.project_id === project.id),
+      area: demo.demoAreaData.project_id === project.id ? demo.demoAreaData : null,
+      invoices: demo.demoInvoices.filter((i) => i.project_id === project.id),
+    };
+  }
+  const admin = createAdminClient();
+  const { data: project } = await admin
+    .from("projects")
+    .select("*")
+    .eq("share_token", token)
+    .maybeSingle();
+  if (!project) return null;
+  return buildProjectBundle(admin, project as Project);
+}
+
+/** Fetch + sign every collection a portal shows for one project. */
+async function buildProjectBundle(
+  admin: Admin,
+  project: Project
+): Promise<PortalProjectBundle> {
+  const projectId = project.id;
   const safe = async <T>(
     query: PromiseLike<{ data: unknown }>,
     fallback: T
@@ -146,14 +198,7 @@ export async function getPortalProjectBundle(
   const documents = await signDocuments(admin, docs);
   const images = await signImages(admin, imgs);
 
-  return {
-    project: project as Project,
-    documents,
-    images,
-    progress,
-    area,
-    invoices,
-  };
+  return { project, documents, images, progress, area, invoices };
 }
 
 type Admin = ReturnType<typeof createAdminClient>;
