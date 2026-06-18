@@ -4,6 +4,7 @@ import { getAllDocuments, getProjects } from "@/lib/queries";
 import { createAdminClient } from "@/lib/supabase/server";
 import { AI_ENABLED } from "@/lib/config";
 import { STORAGE_BUCKETS } from "@/lib/constants";
+import { r2GetBytes } from "@/lib/r2";
 import { formatCurrency } from "@/lib/utils";
 
 export const runtime = "nodejs";
@@ -165,13 +166,19 @@ async function loadDocument(documentId: string) {
       .eq("id", documentId)
       .maybeSingle();
     if (!doc) return null;
-    const { data: signed } = await admin.storage
-      .from(STORAGE_BUCKETS.documents)
-      .createSignedUrl(doc.file_path, 120);
-    if (!signed?.signedUrl) return null;
-    const res = await fetch(signed.signedUrl);
-    if (!res.ok) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
+
+    let buf: Buffer;
+    if (doc.storage === "r2") {
+      buf = await r2GetBytes(doc.file_path);
+    } else {
+      const { data: signed } = await admin.storage
+        .from(STORAGE_BUCKETS.documents)
+        .createSignedUrl(doc.file_path, 120);
+      if (!signed?.signedUrl) return null;
+      const res = await fetch(signed.signedUrl);
+      if (!res.ok) return null;
+      buf = Buffer.from(await res.arrayBuffer());
+    }
     return { doc, base64: buf.toString("base64"), size: buf.length };
   } catch {
     return null;

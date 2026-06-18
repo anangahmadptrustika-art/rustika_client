@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Eye, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -14,8 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { deleteDocument } from "@/app/(app)/projects/[id]/actions";
+import { getDocumentUrl } from "@/app/(app)/projects/[id]/storage-actions";
 import { kindFromType } from "@/lib/file-kind";
-import { STORAGE_BUCKETS } from "@/lib/constants";
 
 export function DocumentActions({
   documentId,
@@ -41,15 +40,12 @@ export function DocumentActions({
   const canPreview = kind === "pdf" || kind === "image";
 
   async function signedUrl(download = false): Promise<string | null> {
-    const supabase = createClient();
-    const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKETS.documents)
-      .createSignedUrl(filePath, 300, download ? { download: true } : undefined);
-    if (error || !data) {
-      toast.error("Gagal membuat link file.");
+    const res = await getDocumentUrl(documentId, download);
+    if (!res.ok || !res.url) {
+      toast.error(res.message ?? "Gagal membuat link file.");
       return null;
     }
-    return data.signedUrl;
+    return res.url;
   }
 
   async function preview() {

@@ -6,6 +6,7 @@ import { getCurrentProfile } from "@/lib/auth";
 import { can } from "@/lib/rbac";
 import { DEMO_MODE } from "@/lib/config";
 import { logActivity } from "@/lib/activity";
+import { r2Delete } from "@/lib/r2";
 import { STORAGE_BUCKETS, type ApprovalStatus } from "@/lib/constants";
 
 export type ActionResult = { ok: boolean; message: string };
@@ -22,9 +23,24 @@ export async function deleteDocument(input: {
   if (DEMO_MODE) return { ok: true, message: "Dokumen dihapus (mode demo)." };
 
   const supabase = await createClient();
-  // Remove the stored file (best-effort) then the DB row.
-  if (input.filePath) {
-    await supabase.storage.from(STORAGE_BUCKETS.documents).remove([input.filePath]);
+  // Find which provider holds the file, then remove it (best-effort).
+  const { data: doc } = await supabase
+    .from("project_documents")
+    .select("storage, file_path")
+    .eq("id", input.documentId)
+    .maybeSingle();
+  const storage = doc?.storage ?? "supabase";
+  const path = doc?.file_path ?? input.filePath;
+  if (path) {
+    if (storage === "r2") {
+      try {
+        await r2Delete(path);
+      } catch {
+        /* ignore */
+      }
+    } else {
+      await supabase.storage.from(STORAGE_BUCKETS.documents).remove([path]);
+    }
   }
   const { error } = await supabase
     .from("project_documents")
@@ -56,8 +72,23 @@ export async function deleteProjectImage(input: {
   if (DEMO_MODE) return { ok: true, message: "Foto dihapus (mode demo)." };
 
   const supabase = await createClient();
-  if (input.filePath) {
-    await supabase.storage.from(STORAGE_BUCKETS.images).remove([input.filePath]);
+  const { data: img } = await supabase
+    .from("project_images")
+    .select("storage, file_path")
+    .eq("id", input.imageId)
+    .maybeSingle();
+  const storage = img?.storage ?? "supabase";
+  const path = img?.file_path ?? input.filePath;
+  if (path) {
+    if (storage === "r2") {
+      try {
+        await r2Delete(path);
+      } catch {
+        /* ignore */
+      }
+    } else {
+      await supabase.storage.from(STORAGE_BUCKETS.images).remove([path]);
+    }
   }
   const { error } = await supabase
     .from("project_images")

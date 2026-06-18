@@ -28,14 +28,10 @@ import {
 import {
   MAX_UPLOAD_BYTES,
   MAX_UPLOAD_MB,
-  STORAGE_BUCKETS,
   type DocumentCategory,
 } from "@/lib/constants";
+import { createUploadUrl } from "@/app/(app)/projects/[id]/storage-actions";
 import { cn, formatBytes } from "@/lib/utils";
-
-function sanitize(name: string) {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "_");
-}
 
 export function DocumentUploadDialog({
   projectId,
@@ -104,12 +100,27 @@ export function DocumentUploadDialog({
         }
 
         const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-        const path = `${projectId}/${category}/${Date.now()}-${i}-${sanitize(file.name)}`;
+        const contentType = file.type || "application/octet-stream";
 
-        const { error: upErr } = await supabase.storage
-          .from(STORAGE_BUCKETS.documents)
-          .upload(path, file, { upsert: false });
-        if (upErr) {
+        // 1. Get a presigned R2 URL, 2. upload bytes straight to R2.
+        const signed = await createUploadUrl({
+          kind: "document",
+          projectId,
+          category,
+          filename: file.name,
+          contentType,
+        });
+        if (!signed.ok || !signed.url || !signed.key) {
+          fail++;
+          setDone(i + 1);
+          continue;
+        }
+        const put = await fetch(signed.url, {
+          method: "PUT",
+          headers: { "Content-Type": contentType },
+          body: file,
+        });
+        if (!put.ok) {
           fail++;
           setDone(i + 1);
           continue;
@@ -127,11 +138,12 @@ export function DocumentUploadDialog({
           category,
           subcategory: subcategory || null,
           name: docName,
-          file_path: path,
+          file_path: signed.key,
           file_type: ext,
           file_size: file.size,
           version: (count ?? 0) + 1,
           description: description.trim() || null,
+          storage: "r2",
           uploaded_by: user.id,
         });
         if (insErr) fail++;

@@ -25,6 +25,7 @@ import type {
   ProjectWithRelations,
 } from "@/types/database";
 import { STORAGE_BUCKETS, type DocumentCategory } from "@/lib/constants";
+import { R2_ENABLED, r2GetUrl } from "@/lib/r2";
 
 async function sb() {
   return createClient();
@@ -121,20 +122,28 @@ export async function getProjectImages(projectId: string): Promise<ProjectImage[
   const rows: ProjectImage[] = data ?? [];
   if (rows.length === 0) return rows;
 
-  // Private bucket — generate short-lived signed URLs so images render.
-  const { data: signed } = await supabase.storage
-    .from(STORAGE_BUCKETS.images)
-    .createSignedUrls(
-      rows.map((r) => r.file_path),
-      3600
+  const map = new Map<string, string>();
+
+  // Supabase-stored images: batch-sign.
+  const supaPaths = rows.filter((r) => r.storage !== "r2").map((r) => r.file_path);
+  if (supaPaths.length) {
+    const { data: signed } = await supabase.storage
+      .from(STORAGE_BUCKETS.images)
+      .createSignedUrls(supaPaths, 3600);
+    for (const s of signed ?? []) {
+      if (s.path && s.signedUrl) map.set(s.path, s.signedUrl);
+    }
+  }
+
+  // R2-stored images.
+  const r2Rows = rows.filter((r) => r.storage === "r2");
+  if (r2Rows.length && R2_ENABLED) {
+    await Promise.all(
+      r2Rows.map(async (r) => map.set(r.file_path, await r2GetUrl(r.file_path)))
     );
-  const urlByPath = new Map(
-    (signed ?? []).map((s) => [s.path, s.signedUrl] as const)
-  );
-  return rows.map((r) => ({
-    ...r,
-    file_url: urlByPath.get(r.file_path) ?? r.file_url,
-  }));
+  }
+
+  return rows.map((r) => ({ ...r, file_url: map.get(r.file_path) ?? r.file_url }));
 }
 
 export async function getProjectProgress(

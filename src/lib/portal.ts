@@ -10,6 +10,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/server";
 import { STORAGE_BUCKETS } from "@/lib/constants";
 import { DEMO_MODE } from "@/lib/config";
+import { R2_ENABLED, r2GetUrl } from "@/lib/r2";
 import * as demo from "@/lib/demo-data";
 import type {
   AreaData,
@@ -158,32 +159,46 @@ export async function getPortalProjectBundle(
 type Admin = ReturnType<typeof createAdminClient>;
 type SignedUrl = { path: string | null; signedUrl: string };
 
+async function signByStorage(
+  admin: Admin,
+  bucket: string,
+  rows: { file_path: string; storage: string }[]
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const supa = rows.filter((r) => r.storage !== "r2").map((r) => r.file_path);
+  if (supa.length) {
+    try {
+      const { data } = await admin.storage.from(bucket).createSignedUrls(supa, 3600);
+      for (const s of (data ?? []) as SignedUrl[]) {
+        if (s.path && s.signedUrl) map.set(s.path, s.signedUrl);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  const r2 = rows.filter((r) => r.storage === "r2");
+  if (r2.length && R2_ENABLED) {
+    await Promise.all(
+      r2.map(async (r) => {
+        try {
+          map.set(r.file_path, await r2GetUrl(r.file_path));
+        } catch {
+          /* ignore */
+        }
+      })
+    );
+  }
+  return map;
+}
+
 async function signDocuments(admin: Admin, docs: ProjectDocument[]) {
   if (docs.length === 0) return docs;
-  try {
-    const { data } = await admin.storage
-      .from(STORAGE_BUCKETS.documents)
-      .createSignedUrls(docs.map((d) => d.file_path), 3600);
-    const map = new Map(
-      ((data ?? []) as SignedUrl[]).map((s) => [s.path, s.signedUrl] as const)
-    );
-    return docs.map((d) => ({ ...d, file_url: map.get(d.file_path) ?? null }));
-  } catch {
-    return docs.map((d) => ({ ...d, file_url: null }));
-  }
+  const map = await signByStorage(admin, STORAGE_BUCKETS.documents, docs);
+  return docs.map((d) => ({ ...d, file_url: map.get(d.file_path) ?? null }));
 }
 
 async function signImages(admin: Admin, imgs: ProjectImage[]) {
   if (imgs.length === 0) return imgs;
-  try {
-    const { data } = await admin.storage
-      .from(STORAGE_BUCKETS.images)
-      .createSignedUrls(imgs.map((i) => i.file_path), 3600);
-    const map = new Map(
-      ((data ?? []) as SignedUrl[]).map((s) => [s.path, s.signedUrl] as const)
-    );
-    return imgs.map((i) => ({ ...i, file_url: map.get(i.file_path) ?? i.file_url }));
-  } catch {
-    return imgs.map((i) => ({ ...i, file_url: i.file_url }));
-  }
+  const map = await signByStorage(admin, STORAGE_BUCKETS.images, imgs);
+  return imgs.map((i) => ({ ...i, file_url: map.get(i.file_path) ?? i.file_url }));
 }

@@ -94,6 +94,7 @@ export interface ProjectDocument {
   file_size: number | null;
   version: number;
   description: string | null;
+  storage: string;
   uploaded_by: string | null;
   created_at: string;
 }
@@ -108,6 +109,7 @@ export interface ProjectImage {
   file_size: number | null;
   tags: string[] | null;
   taken_at: string | null;
+  storage: string;
   uploaded_by: string | null;
   created_at: string;
 }

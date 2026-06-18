@@ -32,14 +32,10 @@ import {
   IMAGE_COMPRESS_MAX_DIMENSION,
   IMAGE_COMPRESS_MAX_MB,
   MAX_UPLOAD_BYTES,
-  STORAGE_BUCKETS,
   type ImageCategory,
 } from "@/lib/constants";
+import { createUploadUrl } from "@/app/(app)/projects/[id]/storage-actions";
 import { formatBytes } from "@/lib/utils";
-
-function sanitize(name: string) {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "_");
-}
 
 export function ImageUploadDialog({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);
@@ -108,14 +104,25 @@ export function ImageUploadDialog({ projectId }: { projectId: string }) {
           continue;
         }
 
-        const path = `${projectId}/${category}/${Date.now()}-${i}-${sanitize(original.name)}`;
-        const { error: upErr } = await supabase.storage
-          .from(STORAGE_BUCKETS.images)
-          .upload(path, blob, {
-            upsert: false,
-            contentType: blob.type || original.type || "image/jpeg",
-          });
-        if (upErr) {
+        const contentType = blob.type || original.type || "image/jpeg";
+        const signed = await createUploadUrl({
+          kind: "image",
+          projectId,
+          category,
+          filename: original.name,
+          contentType,
+        });
+        if (!signed.ok || !signed.url || !signed.key) {
+          fail++;
+          setDone(i + 1);
+          continue;
+        }
+        const put = await fetch(signed.url, {
+          method: "PUT",
+          headers: { "Content-Type": contentType },
+          body: blob,
+        });
+        if (!put.ok) {
           fail++;
           setDone(i + 1);
           continue;
@@ -124,10 +131,11 @@ export function ImageUploadDialog({ projectId }: { projectId: string }) {
           project_id: projectId,
           category,
           title: original.name,
-          file_path: path,
+          file_path: signed.key,
           file_size: blob.size,
           tags: tagList.length ? tagList : null,
           taken_at: new Date().toISOString(),
+          storage: "r2",
           uploaded_by: user.id,
         });
         if (insErr) fail++;
