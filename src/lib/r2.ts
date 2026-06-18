@@ -8,14 +8,36 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 /**
- * Cloudflare R2 (S3-compatible) storage. Files live in R2 (free 10GB) while the
- * database, auth, and RLS stay on Supabase.
+ * S3-compatible object storage for uploaded files (documents & photos) while
+ * the database, auth, and RLS stay on Supabase.
+ *
+ * Works with any S3-compatible provider:
+ *   - Backblaze B2  — 10 GB free, NO credit card for private buckets
+ *   - Cloudflare R2 — 10 GB free (requires a card on file)
  *
  * Env (server only):
- *   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+ *   R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET   (required)
+ *   and ONE of the following to locate the endpoint:
+ *     S3_ENDPOINT   — full endpoint URL. Backblaze B2 example:
+ *                     https://s3.us-west-004.backblazeb2.com
+ *     R2_ACCOUNT_ID — Cloudflare R2 account id (endpoint derived automatically)
+ *   S3_REGION (optional) — signing region; auto-derived for B2, else "auto".
  */
+const ENDPOINT =
+  process.env.S3_ENDPOINT ||
+  (process.env.R2_ACCOUNT_ID
+    ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+    : "");
+
+/** Backblaze B2 signs requests with the region embedded in its endpoint host. */
+function deriveRegion(endpoint: string): string {
+  const m = endpoint.match(/s3\.([a-z0-9-]+)\.backblazeb2\.com/i);
+  return m ? m[1] : "auto";
+}
+const REGION = process.env.S3_REGION || deriveRegion(ENDPOINT);
+
 export const R2_ENABLED =
-  !!process.env.R2_ACCOUNT_ID &&
+  !!ENDPOINT &&
   !!process.env.R2_ACCESS_KEY_ID &&
   !!process.env.R2_SECRET_ACCESS_KEY &&
   !!process.env.R2_BUCKET;
@@ -26,8 +48,8 @@ let _client: S3Client | null = null;
 function client(): S3Client {
   if (!_client) {
     _client = new S3Client({
-      region: "auto",
-      endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      region: REGION,
+      endpoint: ENDPOINT,
       credentials: {
         accessKeyId: process.env.R2_ACCESS_KEY_ID!,
         secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
