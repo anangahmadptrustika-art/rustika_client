@@ -41,6 +41,7 @@ export const PROJECT_STATUSES = [
   "SLF",
   "PBG UNDER CONSTRUCTION",
   "SLF UNDER CONSTRUCTION",
+  "CONSTRUCTION",
   "DESIGN",
   "SUPERVISI",
 ] as const;
@@ -51,6 +52,7 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   SLF: "SLF",
   "PBG UNDER CONSTRUCTION": "PBG Under Construction",
   "SLF UNDER CONSTRUCTION": "SLF Under Construction",
+  CONSTRUCTION: "Construction",
   DESIGN: "Design",
   SUPERVISI: "Supervisi",
 };
@@ -61,6 +63,7 @@ export const PROJECT_STATUS_STYLES: Record<ProjectStatus, string> = {
   SLF: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
   "PBG UNDER CONSTRUCTION": "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
   "SLF UNDER CONSTRUCTION": "bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300",
+  CONSTRUCTION: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300",
   DESIGN: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
   SUPERVISI: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
 };
