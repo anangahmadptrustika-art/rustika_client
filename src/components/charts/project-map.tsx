@@ -3,11 +3,12 @@
 import { MapPin } from "lucide-react";
 import { SULSEL_RINGS } from "./sulsel-geo";
 
-export type RegencyPoint = {
+export type ProjectPoint = {
+  id: string;
   name: string;
   lat: number;
   lng: number;
-  count: number;
+  location?: string | null;
 };
 
 // View focused on the South Sulawesi peninsula + the Luwu arm where projects
@@ -31,11 +32,10 @@ const MAP_PATH = SULSEL_RINGS.map(
     "Z"
 ).join(" ");
 
-export function ProjectMap({ data }: { data: RegencyPoint[] }) {
-  const points = data.filter((d) => d.count > 0).sort((a, b) => b.count - a.count);
-  const total = points.reduce((s, d) => s + d.count, 0);
-  const maxC = Math.max(...points.map((d) => d.count), 1);
-  const radius = (c: number) => 6 + Math.sqrt(c / maxC) * 12;
+export function ProjectMap({ points }: { points: ProjectPoint[] }) {
+  const valid = points.filter(
+    (p) => Number.isFinite(p.lat) && Number.isFinite(p.lng)
+  );
 
   return (
     <div className="grid items-center gap-6 sm:grid-cols-[auto,1fr]">
@@ -45,7 +45,7 @@ export function ProjectMap({ data }: { data: RegencyPoint[] }) {
         height={H}
         className="mx-auto h-[320px] w-auto overflow-hidden"
         role="img"
-        aria-label="Peta sebaran proyek di Sulawesi Selatan"
+        aria-label="Peta titik koordinat proyek di Sulawesi Selatan"
       >
         <path
           d={MAP_PATH}
@@ -55,66 +55,58 @@ export function ProjectMap({ data }: { data: RegencyPoint[] }) {
           strokeLinejoin="round"
           fillRule="evenodd"
         />
-        {points.map((p) => {
+        {valid.map((p) => {
           const [x, y] = project(p.lng, p.lat);
-          const r = radius(p.count);
           return (
-            <g key={p.name}>
-              <circle cx={x} cy={y} r={r + 3} fill="hsl(var(--primary) / 0.18)" />
+            <g key={p.id}>
+              <circle cx={x} cy={y} r={5.5} fill="hsl(var(--primary) / 0.18)" />
               <circle
                 cx={x}
                 cy={y}
-                r={r}
+                r={3}
                 fill="hsl(var(--primary))"
                 fillOpacity={0.9}
                 stroke="white"
-                strokeWidth={1.25}
+                strokeWidth={1}
               >
                 <title>
-                  {p.name}: {p.count} proyek
+                  {p.name}
+                  {p.location ? ` — ${p.location}` : ""}
                 </title>
               </circle>
-              <text
-                x={x}
-                y={y}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fill="white"
-                fontSize={r > 9 ? 11 : 9}
-                fontWeight={700}
-              >
-                {p.count}
-              </text>
             </g>
           );
         })}
       </svg>
 
       <div className="min-w-0">
-        {points.length === 0 ? (
+        {valid.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Belum ada proyek dengan lokasi yang terdeteksi di Sulawesi Selatan.
-            Isi kolom Lokasi proyek dengan nama kabupaten/kota (mis. &quot;Luwu
-            Timur&quot;, &quot;Makassar&quot;).
+            Belum ada proyek dengan titik koordinat. Isi kolom{" "}
+            <b>Koordinat</b> di spreadsheet (mis.{" "}
+            <code>2°31&apos;33&quot;S 121°21&apos;29&quot;E</code>) lalu jalankan
+            sinkronisasi.
           </p>
         ) : (
           <>
-            <ul className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
-              {points.map((p) => (
+            <ul className="grid max-h-[240px] gap-x-6 gap-y-1.5 overflow-auto pr-1 sm:grid-cols-2">
+              {valid.map((p) => (
                 <li
-                  key={p.name}
-                  className="flex items-center justify-between gap-3 text-sm"
+                  key={p.id}
+                  className="flex min-w-0 items-center gap-2 text-sm"
                 >
-                  <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
-                    <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
-                    <span className="truncate">{p.name}</span>
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <span
+                    className="truncate text-muted-foreground"
+                    title={p.location ?? undefined}
+                  >
+                    {p.name}
                   </span>
-                  <span className="font-semibold tabular-nums">{p.count}</span>
                 </li>
               ))}
             </ul>
             <p className="mt-4 text-xs text-muted-foreground">
-              {total} proyek terpetakan di {points.length} kabupaten/kota
+              {valid.length} proyek terpetakan berdasarkan titik koordinat
             </p>
           </>
         )}

@@ -32,7 +32,6 @@ import { ProgressAreaChart } from "@/components/charts/progress-area-chart";
 import { StatusBarChart } from "@/components/charts/status-bar-chart";
 import { DivisionBarChart } from "@/components/charts/division-bar-chart";
 import { ProjectMap } from "@/components/charts/project-map";
-import { SULSEL_REGENCIES, matchRegency } from "@/components/charts/sulsel-geo";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Stagger, StaggerItem } from "@/components/motion/motion-primitives";
 import {
@@ -61,20 +60,16 @@ export default async function DashboardPage() {
     value: projects.filter((p) => p.status === s).length,
   }));
 
-  // Map project locations onto South Sulawesi regencies for the map card.
-  const regencyCount = new Map<string, number>();
-  for (const p of projects) {
-    const rg = matchRegency(p.location);
-    if (rg) regencyCount.set(rg.name, (regencyCount.get(rg.name) ?? 0) + 1);
-  }
-  const regencyData = SULSEL_REGENCIES.filter((rg) => regencyCount.get(rg.name)).map(
-    (rg) => ({
-      name: rg.name,
-      lat: rg.lat,
-      lng: rg.lng,
-      count: regencyCount.get(rg.name)!,
-    })
-  );
+  // Plot each project at its stored coordinate (filled from the sheet sync).
+  const mapPoints = projects
+    .filter((p) => p.latitude != null && p.longitude != null)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      lat: p.latitude as number,
+      lng: p.longitude as number,
+      location: p.location,
+    }));
 
   return (
     <div className="space-y-6">
@@ -146,11 +141,11 @@ export default async function DashboardPage() {
         <CardHeader>
           <CardTitle>Sebaran Proyek — Sulawesi Selatan</CardTitle>
           <CardDescription>
-            Lokasi proyek dipetakan per kabupaten/kota
+            Lokasi proyek berdasarkan titik koordinat
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ProjectMap data={regencyData} />
+          <ProjectMap points={mapPoints} />
         </CardContent>
       </Card>
 
