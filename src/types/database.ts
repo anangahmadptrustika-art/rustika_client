@@ -61,6 +61,8 @@ export interface Project {
   client_id: string;
   project_type: string | null;
   location: string | null;
+  latitude: number | null;
+  longitude: number | null;
   area_size: number | null;
   project_manager_id: string | null;
   start_date: string | null;

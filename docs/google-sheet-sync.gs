@@ -7,18 +7,25 @@
  *   3. Ganti SYNC_SECRET dengan nilai yang sama seperti env SYNC_SECRET di Vercel.
  *   4. Save → muat ulang Sheet → muncul menu "Rustika" → "Sync ke Aplikasi".
  *
- * Butuh DUA tab (nama persis):
+ * Kolom dibaca BERDASARKAN JUDUL di baris 1 (bukan posisi), jadi aman walau
+ * urutan kolom diubah atau ada kolom baru disisipkan.
  *
- *   Tab "Proyek"  (baris 1 = judul, data mulai baris 2):
- *     A Client | B Kode Proyek | C Nama Proyek | D Tipe Proyek | E Status |
- *     F Lokasi | G Tanggal Mulai | H Tanggal Selesai | I Nilai Kontrak
+ *   Tab "Proyek"  (baris 1 = judul, data mulai baris 2). Judul yang dikenali:
+ *     Client | Kode Proyek | Nama Proyek | Tipe Proyek | Status |
+ *     Koordinat | Alamat (atau Lokasi) | Tanggal Mulai | Tanggal Selesai |
+ *     Nilai Kontrak
  *
  *   Tab "Progress" (baris 1 = judul, data mulai baris 2):
- *     A Kode Proyek | B Tanggal | C Progress % | D Catatan
+ *     Kode Proyek | Tanggal | Progress % | Catatan
  *
- * Status valid: PBG, SLF, PBG UNDER CONSTRUCTION, SLF UNDER CONSTRUCTION,
- *               CONSTRUCTION, DESIGN, SUPERVISI  (kosong/typo -> DESIGN)
- * Tiap baris Progress = satu titik progres pada tanggal tsb (mengisi grafik).
+ * Catatan:
+ *   - Proyek dicocokkan dengan yang sudah ada lewat KODE; kalau kode tidak
+ *     cocok, dicocokkan lewat NAMA. Jadi tidak akan membuat proyek dobel.
+ *   - "Koordinat" boleh format DMS (mis. 2°31'33"S 121°21'29"E) atau desimal
+ *     (mis. -2.526, 121.358) → otomatis jadi titik di peta.
+ *   - Status valid: PBG, SLF, PBG UNDER CONSTRUCTION, SLF UNDER CONSTRUCTION,
+ *     CONSTRUCTION, DESIGN, SUPERVISI (kosong/typo -> DESIGN).
+ *   - Tiap baris Progress = satu titik progres pada tanggal tsb (mengisi grafik).
  */
 
 const ENDPOINT_URL = "https://rustika-client.vercel.app/api/sync/projects";
@@ -35,30 +42,57 @@ function syncToApp() {
   const ui = SpreadsheetApp.getUi();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  const projects = readTab_(ss, "Proyek", function (r) {
-    if (!r[1] && !r[2]) return null; // butuh kode & nama
-    return {
-      client: r[0],
-      code: r[1],
-      name: r[2],
-      type: r[3],
-      status: r[4],
-      location: r[5],
-      start_date: fmtDate_(r[6]),
-      end_date: fmtDate_(r[7]),
-      contract_value: r[8],
-    };
-  });
+  const projects = readByHeader_(
+    ss,
+    "Proyek",
+    {
+      client: ["client"],
+      code: ["kode proyek", "kode"],
+      name: ["nama proyek", "nama"],
+      type: ["tipe proyek", "tipe"],
+      status: ["status"],
+      coordinates: ["koordinat", "titik koordinat", "coordinate", "coordinates"],
+      location: ["alamat", "lokasi", "location"],
+      start_date: ["tanggal mulai", "mulai"],
+      end_date: ["tanggal selesai", "selesai"],
+      contract_value: ["nilai kontrak", "kontrak", "nilai"],
+    },
+    function (r) {
+      if (!r.code && !r.name) return null; // butuh kode & nama
+      return {
+        client: r.client,
+        code: r.code,
+        name: r.name,
+        type: r.type,
+        status: r.status,
+        coordinates: r.coordinates,
+        location: r.location,
+        start_date: fmtDate_(r.start_date),
+        end_date: fmtDate_(r.end_date),
+        contract_value: r.contract_value,
+      };
+    }
+  );
 
-  const progress = readTab_(ss, "Progress", function (r) {
-    if (!r[0] || r[1] === "" || r[1] == null) return null; // butuh kode & tanggal
-    return {
-      code: r[0],
-      date: fmtDate_(r[1]),
-      progress: r[2],
-      note: r[3],
-    };
-  });
+  const progress = readByHeader_(
+    ss,
+    "Progress",
+    {
+      code: ["kode proyek", "kode"],
+      date: ["tanggal", "date"],
+      progress: ["progress %", "progress", "persen", "%"],
+      note: ["catatan", "note", "keterangan"],
+    },
+    function (r) {
+      if (!r.code || r.date === "" || r.date == null) return null; // butuh kode & tanggal
+      return {
+        code: r.code,
+        date: fmtDate_(r.date),
+        progress: r.progress,
+        note: r.note,
+      };
+    }
+  );
 
   if (projects.length === 0 && progress.length === 0) {
     ui.alert('Tidak ada data. Pastikan ada tab "Proyek" dan/atau "Progress".');
@@ -102,14 +136,45 @@ function syncToApp() {
   ui.alert(msg);
 }
 
-function readTab_(ss, name, mapFn) {
+/**
+ * Baca sebuah tab dan petakan kolom berdasarkan JUDUL (baris 1).
+ * fieldMap: { namaField: [alias judul, ...] } (alias huruf kecil).
+ * mapFn menerima objek { namaField: nilai } per baris dan mengembalikan baris
+ * akhir (atau null untuk dilewati).
+ */
+function readByHeader_(ss, name, fieldMap, mapFn) {
   const sh = ss.getSheetByName(name);
   if (!sh) return [];
   const values = sh.getDataRange().getValues();
+  if (values.length < 2) return [];
+
+  const headers = values[0].map(function (h) {
+    return String(h).trim().toLowerCase();
+  });
+
+  const colOf = {};
+  Object.keys(fieldMap).forEach(function (field) {
+    const aliases = fieldMap[field];
+    let idx = -1;
+    for (let a = 0; a < aliases.length; a++) {
+      const found = headers.indexOf(aliases[a]);
+      if (found !== -1) {
+        idx = found;
+        break;
+      }
+    }
+    colOf[field] = idx;
+  });
+
   const out = [];
   for (let i = 1; i < values.length; i++) {
-    const row = mapFn(values[i]);
-    if (row) out.push(row);
+    const rowVals = values[i];
+    const rec = {};
+    Object.keys(colOf).forEach(function (field) {
+      rec[field] = colOf[field] === -1 ? "" : rowVals[colOf[field]];
+    });
+    const mapped = mapFn(rec);
+    if (mapped) out.push(mapped);
   }
   return out;
 }
