@@ -74,7 +74,15 @@ export function ProjectsBrowser({
       if (!map.has(id)) map.set(id, { id, name, projects: [] });
       map.get(id)!.projects.push(p);
     }
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    // Sort projects within each client by code, and clients by name.
+    return Array.from(map.values())
+      .map((g) => ({
+        ...g,
+        projects: [...g.projects].sort((a, b) =>
+          a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: "base" })
+        ),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [filtered]);
 
   function toggle(id: string) {
