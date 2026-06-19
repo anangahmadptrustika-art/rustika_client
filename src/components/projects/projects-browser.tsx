@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronRight,
   FolderKanban,
@@ -12,6 +13,7 @@ import {
 import { ProjectCard } from "@/components/projects/project-card";
 import { ProjectStatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Stagger, StaggerItem } from "@/components/motion/motion-primitives";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -30,6 +32,8 @@ import {
 import { cn, formatDate, getInitials } from "@/lib/utils";
 import type { ProjectWithRelations } from "@/types/database";
 
+const EASE = [0.22, 1, 0.36, 1] as const;
+
 interface ClientGroup {
   id: string;
   name: string;
@@ -44,7 +48,8 @@ export function ProjectsBrowser({
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<ProjectStatus | "all">("all");
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Folders start collapsed — only client names show until clicked open.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
@@ -73,12 +78,15 @@ export function ProjectsBrowser({
   }, [filtered]);
 
   function toggle(id: string) {
-    setCollapsed((prev) => {
+    setExpanded((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   }
+
+  // When the user is searching/filtering, auto-open folders so matches show.
+  const forceOpen = query.trim() !== "" || status !== "all";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
@@ -129,6 +137,9 @@ export function ProjectsBrowser({
 
         <p className="text-sm text-muted-foreground">
           {filtered.length} proyek dalam {groups.length} client
+          {!forceOpen && groups.length > 0 && (
+            <span className="ml-1 text-xs">· ketuk client untuk membuka</span>
+          )}
         </p>
       </div>
 
@@ -140,13 +151,17 @@ export function ProjectsBrowser({
           description="Tidak ada proyek yang cocok dengan filter Anda."
         />
       ) : (
-        <div className="scrollbar-thin min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+        <Stagger className="scrollbar-thin min-h-0 flex-1 space-y-4 overflow-y-auto scroll-smooth pr-1">
           {groups.map((group) => {
-            const isCollapsed = collapsed.has(group.id);
+            const isOpen = forceOpen || expanded.has(group.id);
             return (
-              <div key={group.id} className="overflow-hidden rounded-xl border bg-card">
+              <StaggerItem
+                key={group.id}
+                className="overflow-hidden rounded-xl border bg-card"
+              >
                 {/* Client header */}
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.995 }}
                   onClick={() => toggle(group.id)}
                   className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-accent/40"
                 >
@@ -162,59 +177,72 @@ export function ProjectsBrowser({
                   <Badge variant="secondary">{group.projects.length}</Badge>
                   <ChevronRight
                     className={cn(
-                      "h-5 w-5 shrink-0 text-muted-foreground transition-transform",
-                      !isCollapsed && "rotate-90"
+                      "h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300",
+                      isOpen && "rotate-90"
                     )}
                   />
-                </button>
+                </motion.button>
 
-                {!isCollapsed && (
-                  <div className="border-t p-4">
-                    {view === "grid" ? (
-                      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                        {group.projects.map((p) => (
-                          <ProjectCard key={p.id} project={p} />
-                        ))}
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      key="content"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: EASE }}
+                      className="overflow-hidden"
+                    >
+                      <div className="border-t p-4">
+                        {view === "grid" ? (
+                          <Stagger className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                            {group.projects.map((p) => (
+                              <StaggerItem key={p.id}>
+                                <ProjectCard project={p} />
+                              </StaggerItem>
+                            ))}
+                          </Stagger>
+                        ) : (
+                          <div className="overflow-hidden rounded-lg border">
+                            {group.projects.map((p, i) => (
+                              <Link
+                                key={p.id}
+                                href={`/projects/${p.id}`}
+                                className={cn(
+                                  "flex items-center gap-4 p-3 transition-colors hover:bg-accent",
+                                  i !== 0 && "border-t"
+                                )}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="truncate font-medium">{p.name}</span>
+                                    <ProjectStatusBadge status={p.status} />
+                                  </div>
+                                  <p className="truncate text-xs text-muted-foreground">
+                                    {p.code} · {p.location}
+                                  </p>
+                                </div>
+                                <p className="hidden text-xs text-muted-foreground md:block">
+                                  {formatDate(p.end_date)}
+                                </p>
+                                <div className="hidden w-36 shrink-0 sm:block">
+                                  <div className="mb-1 flex justify-between text-xs">
+                                    <span className="text-muted-foreground">{p.progress}%</span>
+                                  </div>
+                                  <Progress value={Number(p.progress)} />
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="overflow-hidden rounded-lg border">
-                        {group.projects.map((p, i) => (
-                          <Link
-                            key={p.id}
-                            href={`/projects/${p.id}`}
-                            className={cn(
-                              "flex items-center gap-4 p-3 transition-colors hover:bg-accent",
-                              i !== 0 && "border-t"
-                            )}
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="truncate font-medium">{p.name}</span>
-                                <ProjectStatusBadge status={p.status} />
-                              </div>
-                              <p className="truncate text-xs text-muted-foreground">
-                                {p.code} · {p.location}
-                              </p>
-                            </div>
-                            <p className="hidden text-xs text-muted-foreground md:block">
-                              {formatDate(p.end_date)}
-                            </p>
-                            <div className="hidden w-36 shrink-0 sm:block">
-                              <div className="mb-1 flex justify-between text-xs">
-                                <span className="text-muted-foreground">{p.progress}%</span>
-                              </div>
-                              <Progress value={Number(p.progress)} />
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </StaggerItem>
             );
           })}
-        </div>
+        </Stagger>
       )}
     </div>
   );
