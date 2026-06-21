@@ -29,6 +29,7 @@ import { ProjectStatusBadge } from "@/components/shared/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ProjectTabs, type ProjectTabDef } from "@/components/projects/project-tabs";
+import { ReportSection } from "@/components/projects/report-section";
 import { DocumentTable } from "@/components/projects/document-table";
 import { DocumentUploadDialog } from "@/components/projects/document-upload-dialog";
 import { ImageUploadDialog } from "@/components/projects/image-upload-dialog";
@@ -44,7 +45,12 @@ import { EditProjectDialog } from "@/components/projects/edit-project-dialog";
 import { AddProgressDialog } from "@/components/projects/add-progress-dialog";
 import { AddInvoiceDialog } from "@/components/projects/add-invoice-dialog";
 import { AreaDataDialog } from "@/components/projects/area-data-dialog";
-import { DRONE_SUBCATEGORIES, SIMBG_SUBCATEGORIES } from "@/lib/constants";
+import {
+  DRONE_SUBCATEGORIES,
+  PROJECT_REPORT_TYPES,
+  REPORT_ONLY_CLIENTS,
+  SIMBG_SUBCATEGORIES,
+} from "@/lib/constants";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
 
 export async function generateMetadata({
@@ -324,6 +330,35 @@ export default async function ProjectDetailPage({
     );
   }
 
+  // Report-only clients (e.g. VALE-RIVANO) get a simplified view: just the
+  // three report buckets (Harian / Mingguan / Bulanan) for gambar & PDF.
+  const isReportClient = REPORT_ONLY_CLIENTS.some(
+    (c) => c.toUpperCase() === (project.client?.name ?? "").trim().toUpperCase()
+  );
+
+  const renderTabs: ProjectTabDef[] = isReportClient
+    ? PROJECT_REPORT_TYPES.map((r) => ({ value: r.value, label: r.label }))
+    : tabs;
+
+  const renderContent: Record<string, React.ReactNode> = isReportClient
+    ? Object.fromEntries(
+        PROJECT_REPORT_TYPES.map((r) => [
+          r.value,
+          <ReportSection
+            key={r.value}
+            projectId={id}
+            title={r.label}
+            subcategory={r.subcategory}
+            documents={allDocs.filter((d) => d.subcategory === r.subcategory)}
+            canEdit={canEdit}
+            canDelete={canDeleteDoc}
+          />,
+        ])
+      )
+    : content;
+
+  const defaultTab = tab ?? (isReportClient ? PROJECT_REPORT_TYPES[0].value : "overview");
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
@@ -362,7 +397,7 @@ export default async function ProjectDetailPage({
         </div>
       </div>
 
-      <ProjectTabs tabs={tabs} content={content} defaultTab={tab ?? "overview"} />
+      <ProjectTabs tabs={renderTabs} content={renderContent} defaultTab={defaultTab} />
     </div>
   );
 }

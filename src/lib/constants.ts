@@ -109,6 +109,19 @@ export const DRONE_SUBCATEGORIES = [
   "Foto Udara",
 ] as const;
 
+// Clients that use the simplified "report-only" project view (gambar & PDF
+// grouped into Harian / Mingguan / Bulanan). Matched case-insensitively by
+// client name.
+export const REPORT_ONLY_CLIENTS = ["VALE-RIVANO"] as const;
+
+// The three report buckets for report-only clients. Stored on documents as
+// category "other" + these subcategories.
+export const PROJECT_REPORT_TYPES = [
+  { value: "harian", label: "Laporan Harian", subcategory: "Laporan Harian" },
+  { value: "mingguan", label: "Laporan Mingguan", subcategory: "Laporan Mingguan" },
+  { value: "bulanan", label: "Laporan Bulanan", subcategory: "Laporan Bulanan" },
+] as const;
+
 // ── Images ───────────────────────────────────────────────────
 export const IMAGE_CATEGORIES = ["existing", "survey", "progress", "final"] as const;
 export type ImageCategory = (typeof IMAGE_CATEGORIES)[number];
