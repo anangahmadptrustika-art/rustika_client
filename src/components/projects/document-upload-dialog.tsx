@@ -37,16 +37,19 @@ export function DocumentUploadDialog({
   projectId,
   category,
   subcategories,
+  fixedSubcategory,
   label = "Upload Dokumen",
 }: {
   projectId: string;
   category: DocumentCategory;
   subcategories?: readonly string[];
+  /** Force a single subcategory (no dropdown shown). Takes priority. */
+  fixedSubcategory?: string;
   label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
-  const [subcategory, setSubcategory] = useState("");
+  const [subcategory, setSubcategory] = useState(fixedSubcategory ?? "");
   const [description, setDescription] = useState("");
   const [uploading, setUploading] = useState(false);
   const [done, setDone] = useState(0);
@@ -55,7 +58,7 @@ export function DocumentUploadDialog({
 
   function reset() {
     setFiles([]);
-    setSubcategory("");
+    setSubcategory(fixedSubcategory ?? "");
     setDescription("");
     setDone(0);
     if (inputRef.current) inputRef.current.value = "";
@@ -266,7 +269,7 @@ export function DocumentUploadDialog({
             </div>
           )}
 
-          {subcategories && subcategories.length > 0 && (
+          {!fixedSubcategory && subcategories && subcategories.length > 0 && (
             <div className="space-y-2">
               <Label>Kategori * (berlaku untuk semua file)</Label>
               <Select value={subcategory} onValueChange={setSubcategory}>
