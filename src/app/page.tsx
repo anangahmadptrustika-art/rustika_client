@@ -4,6 +4,7 @@ import {
   BarChart3,
   Building2,
   CheckCircle2,
+  ClipboardList,
   FileText,
   Plane,
   ShieldCheck,
@@ -71,12 +72,22 @@ export default function LandingPage() {
             <a href="#features" className="hover:text-foreground">Fitur</a>
             <a href="#modules" className="hover:text-foreground">Modul</a>
             <a href="#roles" className="hover:text-foreground">Peran</a>
-          </nav>
-          <Button asChild>
-            <Link href="/login">
-              Masuk Portal <ArrowRight className="h-4 w-4" />
+            <Link href="/realisasi" className="hover:text-foreground">
+              Laporan Realisasi
             </Link>
-          </Button>
+          </nav>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild className="hidden sm:inline-flex">
+              <Link href="/realisasi">
+                <ClipboardList className="h-4 w-4" /> Laporan Realisasi
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/login">
+                Masuk Portal <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </header>
 
