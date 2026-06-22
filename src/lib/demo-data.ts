@@ -104,6 +104,7 @@ export const demoProjects: Project[] = [
     contract_value: 1850000000,
     status: "DESIGN",
     progress: 62,
+    realisasi: {},
     description:
       "Perencanaan gedung kantor 3 lantai termasuk kajian teknis, SIMBG, dan survey topografi.",
     created_by: demoProfile.id,
@@ -126,6 +127,7 @@ export const demoProjects: Project[] = [
     contract_value: 640000000,
     status: "DESIGN",
     progress: 38,
+    realisasi: {},
     description:
       "Pemetaan udara orthomosaic & DTM untuk perencanaan kawasan industri seluas 12.5 Ha.",
     created_by: demoProfile.id,
@@ -148,6 +150,7 @@ export const demoProjects: Project[] = [
     contract_value: 320000000,
     status: "PBG",
     progress: 75,
+    realisasi: {},
     description: "Kajian teknis & pengurusan SIMBG gudang logistik 2 lantai.",
     created_by: demoProfile.id,
     created_at: "2025-04-01T08:00:00Z",
@@ -169,6 +172,7 @@ export const demoProjects: Project[] = [
     contract_value: 540000000,
     status: "SLF",
     progress: 100,
+    realisasi: {},
     description: "Pengawasan renovasi mess karyawan 40 unit.",
     created_by: demoProfile.id,
     created_at: "2024-10-01T08:00:00Z",

@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Bell,
   Building2,
+  ClipboardList,
   FileText,
   FolderKanban,
   LayoutDashboard,
@@ -32,6 +33,12 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { title: "Proyek", href: "/projects", icon: FolderKanban },
+      {
+        title: "Laporan Realisasi",
+        href: "/realisasi",
+        icon: ClipboardList,
+        roles: ["super_admin", "project_manager", "staff"],
+      },
       { title: "Dokumen", href: "/documents", icon: FileText },
       {
         title: "Invoice",

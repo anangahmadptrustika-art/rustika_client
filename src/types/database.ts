@@ -70,6 +70,7 @@ export interface Project {
   contract_value: number | null;
   status: ProjectStatus;
   progress: number;
+  realisasi: Record<string, number> | null;
   description: string | null;
   share_token?: string | null;
   created_by: string | null;
