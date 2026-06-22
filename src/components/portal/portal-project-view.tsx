@@ -18,7 +18,9 @@ import {
   type PreviewItem,
 } from "@/components/portal/file-preview-grid";
 import { PortalFolder } from "@/components/portal/portal-folder";
+import { RealisasiReadonly } from "@/components/realisasi/realisasi-readonly";
 import { kindFromType } from "@/lib/file-kind";
+import { sanitizeRealisasiMap } from "@/lib/realisasi-template";
 import type { PortalProjectBundle } from "@/lib/portal";
 import type { ProjectDocument } from "@/types/database";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -62,6 +64,9 @@ export function PortalProjectView({
     size: i.file_size,
   }));
 
+  const hasRealisasi =
+    Object.keys(sanitizeRealisasiMap(project.realisasi)).length > 0;
+
   return (
     <div className="space-y-8">
       {backHref && (
@@ -91,6 +96,13 @@ export function PortalProjectView({
           <Progress value={project.progress} className="h-2.5" />
         </div>
       </div>
+
+      {hasRealisasi && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Laporan Realisasi Progres</h2>
+          <RealisasiReadonly realisasi={project.realisasi} />
+        </section>
+      )}
 
       <p className="text-sm text-muted-foreground">Ketuk folder untuk membuka isinya.</p>
 
