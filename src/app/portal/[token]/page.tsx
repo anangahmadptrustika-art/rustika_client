@@ -81,12 +81,12 @@ export default async function PortalHome({
             description="Proyek Anda akan tampil di sini begitu tim memulainya."
           />
         ) : (
-          <Stagger className="grid gap-3 sm:grid-cols-2">
+          <Stagger className="grid gap-3 sm:grid-cols-2 print:block print:gap-0">
             {projects.map((p) => (
-              <StaggerItem key={p.id}>
+              <StaggerItem key={p.id} className="print:break-inside-avoid">
               <Link href={`/portal/${token}/p/${p.id}`} className="group block">
-                <Card className="h-full transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
-                  <CardContent className="space-y-3 p-4">
+                <Card className="h-full transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md print:rounded-none print:border-0 print:border-b print:border-gray-300 print:shadow-none print:transition-none">
+                  <CardContent className="space-y-3 p-4 print:space-y-1 print:p-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-xs text-muted-foreground">{p.code}</p>
@@ -102,9 +102,9 @@ export default async function PortalHome({
                         <span className="text-muted-foreground">Progres</span>
                         <span className="font-semibold">{p.progress}%</span>
                       </div>
-                      <Progress value={p.progress} />
+                      <Progress value={p.progress} className="print:hidden" />
                     </div>
-                    <span className="flex items-center gap-1 text-sm font-medium text-primary">
+                    <span className="flex items-center gap-1 text-sm font-medium text-primary print:hidden">
                       Lihat detail <ArrowRight className="h-4 w-4" />
                     </span>
                   </CardContent>
