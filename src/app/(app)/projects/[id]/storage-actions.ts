@@ -17,6 +17,21 @@ function sanitize(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
+// Server-side upload whitelist (Rule #8). Reject executables/scripts and
+// script-capable formats (e.g. svg, html) — only allow known-safe types.
+const ALLOWED_EXT: Record<"document" | "image", readonly string[]> = {
+  document: [
+    "pdf", "doc", "docx", "xls", "xlsx", "csv", "ppt", "pptx",
+    "dwg", "dxf", "txt", "jpg", "jpeg", "png", "gif", "webp", "zip", "rar",
+  ],
+  image: ["jpg", "jpeg", "png", "gif", "webp"],
+};
+
+function extOf(name: string): string {
+  const m = name.toLowerCase().match(/\.([a-z0-9]+)$/);
+  return m ? m[1] : "";
+}
+
 /** Signed params so the browser uploads the file straight to Cloudinary. */
 export async function createUploadParams(input: {
   kind: "document" | "image";
@@ -30,6 +45,15 @@ export async function createUploadParams(input: {
   }
   if (!CLOUDINARY_ENABLED) {
     return { ok: false, message: "Penyimpanan file (Cloudinary) belum dikonfigurasi." };
+  }
+  const ext = extOf(input.filename);
+  if (!ext || !ALLOWED_EXT[input.kind].includes(ext)) {
+    return {
+      ok: false,
+      message: `Tipe file .${ext || "?"} tidak diizinkan. Diperbolehkan: ${ALLOWED_EXT[
+        input.kind
+      ].join(", ")}.`,
+    };
   }
   const resourceType = cldResourceType(input.kind);
   const prefix = input.kind === "image" ? "i" : "d";

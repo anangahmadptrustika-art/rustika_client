@@ -224,6 +224,7 @@ export function DocumentUploadDialog({
               id="file"
               type="file"
               multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.dwg,.dxf,.txt,.jpg,.jpeg,.png,.gif,.webp,.zip,.rar"
               onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
               className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
             />
