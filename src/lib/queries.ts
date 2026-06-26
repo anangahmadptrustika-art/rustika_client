@@ -379,6 +379,15 @@ export interface SearchResults {
   invoices: Invoice[];
 }
 
+/**
+ * Strip PostgREST filter + SQL-LIKE metacharacters from a search term so user
+ * input cannot alter the `.or()` / `.ilike` filter grammar. Defense-in-depth on
+ * top of RLS (which already scopes results to what the user may read).
+ */
+function sanitizeSearch(s: string): string {
+  return s.replace(/[,()."':*\\%_]/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export async function globalSearch(query: string): Promise<SearchResults> {
   const q = query.toLowerCase().trim();
   if (!q) return { projects: [], documents: [], clients: [], invoices: [] };
@@ -405,14 +414,17 @@ export async function globalSearch(query: string): Promise<SearchResults> {
     };
   }
 
+  const term = sanitizeSearch(q);
+  if (!term) return { projects: [], documents: [], clients: [], invoices: [] };
+
   const supabase = await sb();
   const [projects, documents, clients, invoices] = await Promise.all([
     supabase.from("projects").select("*").or(
-      `name.ilike.%${q}%,code.ilike.%${q}%,location.ilike.%${q}%`
+      `name.ilike.%${term}%,code.ilike.%${term}%,location.ilike.%${term}%`
     ).limit(10),
-    supabase.from("project_documents").select("*").ilike("name", `%${q}%`).limit(10),
-    supabase.from("clients").select("*").or(`name.ilike.%${q}%,company.ilike.%${q}%`).limit(10),
-    supabase.from("invoices").select("*").ilike("invoice_number", `%${q}%`).limit(10),
+    supabase.from("project_documents").select("*").ilike("name", `%${term}%`).limit(10),
+    supabase.from("clients").select("*").or(`name.ilike.%${term}%,company.ilike.%${term}%`).limit(10),
+    supabase.from("invoices").select("*").ilike("invoice_number", `%${term}%`).limit(10),
   ]);
 
   return {
