@@ -82,3 +82,15 @@ export function getFileExtension(filename: string): string {
 export function clamp(value: number, min = 0, max = 100): number {
   return Math.min(Math.max(value, min), max);
 }
+
+/**
+ * Allow only safe link targets (internal relative paths or explicit http/https).
+ * Blocks `javascript:`, `data:`, and other schemes that enable XSS when placed
+ * in an href. Returns "#" for anything unsafe/empty.
+ */
+export function safeHref(href: string | null | undefined): string {
+  const s = (href ?? "").trim();
+  if (s.startsWith("/") && !s.startsWith("//")) return s; // internal path
+  if (/^https?:\/\//i.test(s)) return s; // explicit http(s)
+  return "#";
+}

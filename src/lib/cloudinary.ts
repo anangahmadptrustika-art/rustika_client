@@ -91,9 +91,19 @@ export async function cldDelete(
   });
 }
 
-/** Download object bytes (used by the AI document analysis). */
+/** Download object bytes (used by the AI document analysis). SSRF guard: only
+ * https Cloudinary hosts are fetched, since file_url originates client-side. */
 export async function cldGetBytes(url: string): Promise<Buffer> {
-  const res = await fetch(url);
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    throw new Error("Invalid file URL");
+  }
+  if (u.protocol !== "https:" || !/(^|\.)cloudinary\.com$/i.test(u.hostname)) {
+    throw new Error("Refused: file URL is not a Cloudinary https URL");
+  }
+  const res = await fetch(u.toString());
   if (!res.ok) throw new Error(`Cloudinary fetch failed: ${res.status}`);
   return Buffer.from(await res.arrayBuffer());
 }

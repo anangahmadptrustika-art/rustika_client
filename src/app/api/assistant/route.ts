@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
 import { getAllDocuments, getProjects } from "@/lib/queries";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { AI_ENABLED } from "@/lib/config";
 import { STORAGE_BUCKETS } from "@/lib/constants";
 import { r2GetBytes } from "@/lib/r2";
@@ -56,9 +56,16 @@ export async function POST(req: Request) {
   let docNote = "";
 
   if (documentId) {
-    const loaded = await loadDocument(documentId);
-    if (!loaded) {
+    // Authorization: resolve the document through the USER-scoped client so RLS
+    // decides whether this user may access it. Never fetch by id with the admin
+    // client without this gate (prevents cross-tenant IDOR).
+    const docRow = await getAccessibleDocument(documentId);
+    if (!docRow) {
       return NextResponse.json({ reply: "Dokumen tidak ditemukan." }, { status: 200 });
+    }
+    const loaded = await fetchDocBytes(docRow);
+    if (!loaded) {
+      return NextResponse.json({ reply: "Dokumen tidak dapat dibaca." }, { status: 200 });
     }
     if (loaded.size > MAX_DOC_BYTES) {
       return NextResponse.json(
@@ -158,23 +165,35 @@ export async function POST(req: Request) {
   }
 }
 
-async function loadDocument(documentId: string) {
-  try {
-    const admin = createAdminClient();
-    const { data: doc } = await admin
-      .from("project_documents")
-      .select("*")
-      .eq("id", documentId)
-      .maybeSingle();
-    if (!doc) return null;
+/** Resolve a document only if RLS lets THIS user access it (no admin bypass). */
+async function getAccessibleDocument(documentId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("project_documents")
+    .select("*")
+    .eq("id", documentId)
+    .maybeSingle();
+  return data ?? null;
+}
 
+/** Fetch the bytes of an already-authorized document. */
+async function fetchDocBytes(doc: {
+  storage?: string | null;
+  file_url?: string | null;
+  file_path: string;
+  file_type?: string | null;
+  name?: string | null;
+}) {
+  try {
     let buf: Buffer;
     if (doc.storage === "cloudinary") {
       if (!doc.file_url) return null;
-      buf = await cldGetBytes(doc.file_url);
+      buf = await cldGetBytes(doc.file_url); // host-allowlisted in cldGetBytes (SSRF guard)
     } else if (doc.storage === "r2") {
       buf = await r2GetBytes(doc.file_path);
     } else {
+      // Only the storage signing step needs the admin client.
+      const admin = createAdminClient();
       const { data: signed } = await admin.storage
         .from(STORAGE_BUCKETS.documents)
         .createSignedUrl(doc.file_path, 120);

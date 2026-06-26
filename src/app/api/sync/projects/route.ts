@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
+import crypto from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/server";
 import { PROJECT_STATUSES, type ProjectStatus } from "@/lib/constants";
+
+/** Constant-time string comparison to avoid leaking the secret via timing. */
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -125,7 +134,7 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-  if (req.headers.get("x-sync-secret") !== secret) {
+  if (!safeEqual(req.headers.get("x-sync-secret") ?? "", secret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -237,7 +246,8 @@ export async function POST(req: Request) {
           .update(update)
           .eq("id", existingId);
         if (uErr) {
-          errors.push(`Proyek "${name}" gagal di-update: ${uErr.message}`);
+          console.error("sync update error", uErr);
+          errors.push(`Proyek "${name}" gagal di-update (kesalahan database).`);
           proj.skipped++;
           continue;
         }
@@ -263,7 +273,8 @@ export async function POST(req: Request) {
           .select("id")
           .single();
         if (pErr || !created) {
-          errors.push(`Proyek "${code}" gagal dibuat: ${pErr?.message ?? "tidak diketahui"}`);
+          console.error("sync insert error", pErr);
+          errors.push(`Proyek "${code}" gagal dibuat (kesalahan database).`);
           proj.skipped++;
           continue;
         }
@@ -272,7 +283,8 @@ export async function POST(req: Request) {
         proj.created++;
       }
     } catch (e) {
-      errors.push((e as Error).message);
+      console.error("sync row error", e);
+      errors.push("Sebuah baris gagal diproses (kesalahan internal).");
       proj.skipped++;
     }
   }
@@ -330,7 +342,8 @@ export async function POST(req: Request) {
           prog.inserted++;
         }
       } catch (e) {
-        errors.push((e as Error).message);
+        console.error("sync row error", e);
+      errors.push("Sebuah baris gagal diproses (kesalahan internal).");
         prog.skipped++;
       }
     }

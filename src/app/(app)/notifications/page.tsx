@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { timeAgo } from "@/lib/utils";
+import { safeHref, timeAgo } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Notifikasi" };
 
@@ -26,7 +26,7 @@ export default async function NotificationsPage() {
       ) : (
         <div className="space-y-2">
           {notifications.map((n) => (
-            <Link key={n.id} href={n.link ?? "#"}>
+            <Link key={n.id} href={safeHref(n.link)}>
               <Card className={n.is_read ? "" : "border-primary/30 bg-primary/5"}>
                 <CardContent className="flex items-start gap-4 p-4">
                   <span

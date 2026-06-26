@@ -24,14 +24,16 @@ export async function deleteDocument(input: {
   if (DEMO_MODE) return { ok: true, message: "Dokumen dihapus (mode demo)." };
 
   const supabase = await createClient();
-  // Find which provider holds the file, then remove it (best-effort).
+  // Resolve the real path from the DB under RLS — never trust the client-supplied
+  // filePath (it could point at another tenant's storage object).
   const { data: doc } = await supabase
     .from("project_documents")
     .select("storage, file_path")
     .eq("id", input.documentId)
     .maybeSingle();
-  const storage = doc?.storage ?? "supabase";
-  const path = doc?.file_path ?? input.filePath;
+  if (!doc) return { ok: false, message: "Dokumen tidak ditemukan." };
+  const storage = doc.storage ?? "supabase";
+  const path = doc.file_path;
   if (path) {
     if (storage === "cloudinary") {
       try {
@@ -84,8 +86,9 @@ export async function deleteProjectImage(input: {
     .select("storage, file_path")
     .eq("id", input.imageId)
     .maybeSingle();
-  const storage = img?.storage ?? "supabase";
-  const path = img?.file_path ?? input.filePath;
+  if (!img) return { ok: false, message: "Foto tidak ditemukan." };
+  const storage = img.storage ?? "supabase";
+  const path = img.file_path; // from DB under RLS, not client input
   if (path) {
     if (storage === "cloudinary") {
       try {

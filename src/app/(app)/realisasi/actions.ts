@@ -35,11 +35,20 @@ export async function saveRealisasi(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("projects")
     .update({ realisasi: clean, progress: total })
-    .eq("id", projectId);
+    .eq("id", projectId)
+    .select("id");
   if (error) return { ok: false, message: error.message };
+  // RLS only lets the project's PM or a Super Admin update — surface a clear
+  // error instead of a silent no-op when 0 rows were affected.
+  if (!updated || updated.length === 0) {
+    return {
+      ok: false,
+      message: "Tidak berhak mengubah realisasi proyek ini (hanya PM proyek atau Super Admin).",
+    };
+  }
 
   await logActivity({
     projectId,

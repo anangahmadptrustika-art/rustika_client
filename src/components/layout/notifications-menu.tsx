@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { timeAgo } from "@/lib/utils";
+import { safeHref, timeAgo } from "@/lib/utils";
 import type { Notification } from "@/types/database";
 
 export function NotificationsMenu({
@@ -48,7 +48,7 @@ export function NotificationsMenu({
               {notifications.map((n) => (
                 <li key={n.id}>
                   <Link
-                    href={n.link ?? "#"}
+                    href={safeHref(n.link)}
                     className="flex gap-3 px-4 py-3 transition-colors hover:bg-accent"
                   >
                     <span
