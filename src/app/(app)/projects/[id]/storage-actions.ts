@@ -84,7 +84,11 @@ export async function getDocumentUrl(
 
   if (doc.storage === "cloudinary") {
     const url = (doc.file_url as string | null) || "";
-    if (!url) return { ok: false, message: "Berkas tidak ditemukan." };
+    // file_url is client-supplied at insert time; only ever hand back an https
+    // URL so it can't carry a javascript:/data: payload into an iframe/img.
+    if (!/^https:\/\//i.test(url)) {
+      return { ok: false, message: "Berkas tidak ditemukan." };
+    }
     return { ok: true, url: download ? cldDownloadUrl(url) : url };
   }
   if (doc.storage === "r2") {
