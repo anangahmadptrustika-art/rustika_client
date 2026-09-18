@@ -11,3 +11,5 @@ tsconfig.tsbuildinfo
 Dockerfile
 docker-compose.yml
 Caddyfile
+data
+backups

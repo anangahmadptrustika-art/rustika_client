@@ -39,3 +39,7 @@ next-env.d.ts.bak
 .idea
 .vscode/*
 !.vscode/extensions.json
+
+# self-hosted database & backup (jangan pernah commit)
+/data/
+/backups/

@@ -1,4 +1,31 @@
-{$APP_DOMAIN} {
+# Gateway Rustika: SATU domain untuk aplikasi + API database (auth & data).
+#   /supabase-api/auth/v1/*  → GoTrue   (login/sesi)
+#   /supabase-api/rest/v1/*  → PostgREST (data, dilindungi RLS)
+#   lainnya                  → Next.js (app)
+(rustika) {
 	encode zstd gzip
-	reverse_proxy app:3000
+
+	handle_path /supabase-api/auth/v1/* {
+		reverse_proxy auth:9999
+	}
+	handle_path /supabase-api/rest/v1/* {
+		reverse_proxy rest:3000
+	}
+	handle /supabase-api/* {
+		respond "Not found" 404
+	}
+	handle {
+		reverse_proxy app:3000
+	}
+}
+
+# Alamat publik. Mode Tunnel: ":80" (cloudflared → gateway:80).
+# Mode Caddy: nama domain (mis. client.rustika.co.id) → HTTPS Let's Encrypt otomatis.
+{$CADDY_SITE_ADDRESS::80} {
+	import rustika
+}
+
+# Alamat internal untuk server app (SSR) — HTTP polos di jaringan Docker saja.
+http://:8000 {
+	import rustika
 }

@@ -1,10 +1,117 @@
-# Rustika Client — self-hosted stack.
-#   docker compose --profile tunnel up -d --build   # di balik NAT (Cloudflare Tunnel)
-#   docker compose --profile caddy  up -d --build   # IP publik + port 80/443 (Caddy, HTTPS otomatis)
-#   docker compose up -d --build                    # app saja (kamu pasang reverse proxy sendiri)
-# Semua nilai ${VAR} dibaca dari file .env di folder ini (lihat .env.server.example).
+# Rustika Client — stack self-hosted LENGKAP (database ikut di server ini).
+#
+#   docker compose --profile tunnel up -d --build   # di balik NAT (Cloudflare Tunnel) — default
+#   docker compose up -d --build                    # mode Caddy (IP publik, port 80/443) — lihat .env
+#   docker compose --profile tools up -d adminer    # UI database di LAN (opsional)
+#
+# Layanan:
+#   db       Postgres 17 (image supabase/postgres: role & skema auth sudah ada)
+#   auth     GoTrue  — login/sesi (pengganti Supabase Auth)
+#   rest     PostgREST — API data (pengganti Supabase REST), dilindungi RLS
+#   gateway  Caddy — satu pintu: /supabase-api/* → auth/rest, sisanya → app
+#   app      Next.js
+# Semua ${VAR} dibaca dari .env (dibuat oleh scripts/install.sh).
 
 services:
+  db:
+    image: supabase/postgres:17.6.1.136
+    container_name: rustika-db
+    restart: unless-stopped
+    volumes:
+      - ./supabase/self-host/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
+      - ./supabase/self-host/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:ro
+      - ./data/db:/var/lib/postgresql/data
+      - db_config:/etc/postgresql-custom
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: 5432
+      POSTGRES_PORT: 5432
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: postgres
+      POSTGRES_DB: postgres
+      JWT_EXP: 3600
+    command:
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
+
+  auth:
+    image: supabase/gotrue:v2.196.0
+    container_name: rustika-auth
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${NEXT_PUBLIC_SUPABASE_URL}/auth/v1
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      GOTRUE_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: ${NEXT_PUBLIC_SITE_URL}/**
+      GOTRUE_DISABLE_SIGNUP: "true"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_ISSUER: ${NEXT_PUBLIC_SUPABASE_URL}/auth/v1
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+      GOTRUE_SMS_AUTOCONFIRM: "false"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_PASSWORD_MIN_LENGTH: 6
+      # SMTP opsional (hanya untuk email reset password/undangan). Kosong = tidak kirim email.
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL:-admin@example.com}
+      GOTRUE_SMTP_HOST: ${SMTP_HOST:-mail.invalid}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT:-587}
+      GOTRUE_SMTP_USER: ${SMTP_USER:-}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS:-}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-Rustika Client}
+      GOTRUE_MAILER_URLPATHS_INVITE: /supabase-api/auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /supabase-api/auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /supabase-api/auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /supabase-api/auth/v1/verify
+
+  rest:
+    image: postgrest/postgrest:v14.17
+    container_name: rustika-rest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "postgrest", "--ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_MAX_ROWS: 1000
+      PGRST_DB_EXTRA_SEARCH_PATH: public,extensions
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_ADMIN_SERVER_PORT: 3001
+      PGRST_ADMIN_SERVER_HOST: localhost
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: 3600
+    command: ["postgrest"]
+
   app:
     build:
       context: .
@@ -15,8 +122,32 @@ services:
     image: rustika-client:latest
     container_name: rustika-client
     restart: unless-stopped
-    env_file: .env
-    # Hanya terbuka ke localhost; Caddy / cloudflared yang menghadap internet.
+    depends_on:
+      db:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+      rest:
+        condition: service_healthy
+    # Hanya variabel yang dibutuhkan app (password DB & JWT_SECRET TIDAK diberikan ke app).
+    environment:
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      SUPABASE_INTERNAL_URL: http://gateway:8000/supabase-api
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
+      SYNC_SECRET: ${SYNC_SECRET}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET: ${R2_BUCKET:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-}
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:
@@ -26,7 +157,35 @@ services:
       retries: 3
       start_period: 20s
 
-  # Opsi A — Cloudflare Tunnel (server di balik NAT/rumah/kantor, tanpa buka port).
+  gateway:
+    image: caddy:2
+    container_name: rustika-gateway
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+      rest:
+        condition: service_healthy
+    environment:
+      # Mode Tunnel: ":80" (default). Mode Caddy: isi nama domain di .env → HTTPS otomatis.
+      CADDY_SITE_ADDRESS: ${CADDY_SITE_ADDRESS:-:80}
+    ports:
+      # 8000 = pintu internal (HTTP polos) untuk script admin/cek di server ini:
+      #   curl http://127.0.0.1:8000/api/status
+      - "127.0.0.1:8000:8000"
+      # Mode Tunnel: 80/443 tidak perlu dibuka (default hanya localhost).
+      # Mode Caddy: set CADDY_HTTP_BIND=0.0.0.0:80 dan CADDY_HTTPS_BIND=0.0.0.0:443 di .env.
+      - "${CADDY_HTTP_BIND:-127.0.0.1:8080}:80"
+      - "${CADDY_HTTPS_BIND:-127.0.0.1:8443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # Cloudflare Tunnel (server di balik NAT/rumah/kantor, tanpa buka port).
+  # Public Hostname di dashboard Cloudflare → Service: HTTP  gateway:80
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: rustika-cloudflared
@@ -34,29 +193,26 @@ services:
     restart: unless-stopped
     command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
-      app:
-        condition: service_healthy
+      gateway:
+        condition: service_started
 
-  # Opsi B — Caddy (IP publik, port 80/443 terbuka, DNS A record ke server).
-  caddy:
-    image: caddy:2
-    container_name: rustika-caddy
-    profiles: ["caddy"]
+  # UI database (opsional, hanya LAN): docker compose --profile tools up -d adminer
+  # Buka http://IP-SERVER:8081 → System: PostgreSQL, Server: db, User: postgres,
+  # Password: POSTGRES_PASSWORD di .env, Database: postgres
+  adminer:
+    image: adminer:4
+    container_name: rustika-adminer
+    profiles: ["tools"]
     restart: unless-stopped
     environment:
-      APP_DOMAIN: ${APP_DOMAIN}
+      ADMINER_DEFAULT_SERVER: db
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
+      - "${ADMINER_BIND:-8081}:8080"
     depends_on:
-      app:
+      db:
         condition: service_healthy
 
 volumes:
+  db_config:
   caddy_data:
   caddy_config:

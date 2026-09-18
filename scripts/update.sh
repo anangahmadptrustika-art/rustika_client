@@ -2,9 +2,13 @@
 # Update ke versi terbaru & rebuild.  Pakai: bash scripts/update.sh [tunnel|caddy]
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# shellcheck source=scripts/lib.sh
+. scripts/lib.sh
+detect_compose
 MODE="${1:-tunnel}"
-if docker compose version >/dev/null 2>&1; then DC="docker compose"; else DC="sudo docker compose"; fi
+PROFILE=""; [[ "$MODE" == "tunnel" ]] && PROFILE="--profile tunnel"
 git checkout -q main && git pull --ff-only origin main
-$DC --profile "$MODE" up -d --build
+# shellcheck disable=SC2086
+$DC $PROFILE up -d --build
 $DC ps
-curl -fsS http://127.0.0.1:3000/api/status && echo
+curl -fsS http://127.0.0.1:8000/api/status && echo
