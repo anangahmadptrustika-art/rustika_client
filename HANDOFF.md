@@ -12,7 +12,7 @@ Tanggal update: 2026-06-18.
 (arsitektur, sipil, survey, drone, kajian teknis, SIMBG) + **portal client
 publik via QR (tanpa login)**.
 
-- **Live (Production):** https://<DOMAIN-BARU>
+- **Live (Production):** https://client.domainmu
 - **Repo:** `anangahmadptrustika-art/rustika_client`
 - **Branch kerja:** `claude/busy-curie-6ao846` **dan** `main` (di-sync; lihat §4)
 - **Hosting:** Vercel (project `rustika-client`)
@@ -37,7 +37,7 @@ qrcode.react · browser-image-compression · @aws-sdk/client-s3.
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://jbtwezqjnvchzpefvzyh.supabase.co` | ✅ terpasang |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon key (eyJ…) | ✅ |
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key (eyJ…) | ✅ |
-| `NEXT_PUBLIC_SITE_URL` | `https://<DOMAIN-BARU>` | ✅ |
+| `NEXT_PUBLIC_SITE_URL` | `https://client.domainmu` | ✅ |
 | `ANTHROPIC_API_KEY` | sk-ant-… | ⏳ untuk AI (belum dikonfirmasi terpasang) |
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-6` | opsional |
 | `R2_ACCOUNT_ID` | Cloudflare account id | ⏳ BELUM |
@@ -96,7 +96,7 @@ pindah FILE ke **Cloudflare R2 (gratis 10 GB)**, DB/Auth tetap di Supabase.
 1. Buat akun Cloudflare → R2 → **Create bucket** `rustika-files`.
 2. **Manage R2 API Tokens** → Object Read & Write → catat Access Key ID,
    Secret Access Key, Account ID.
-3. Bucket → **Settings → CORS** → izinkan origin `https://<DOMAIN-BARU>`
+3. Bucket → **Settings → CORS** → izinkan origin `https://client.domainmu`
    (+ domain Hostinger nanti), methods GET & PUT.
 4. Isi 4 env var R2 di Vercel (lihat §3) → **Redeploy**.
 5. Jalankan **SQL 0007** (lihat §5).

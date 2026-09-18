@@ -28,7 +28,7 @@
  *   - Tiap baris Progress = satu titik progres pada tanggal tsb (mengisi grafik).
  */
 
-const ENDPOINT_URL = "https://GANTI-DENGAN-DOMAIN-BARU/api/sync/projects"; // mis. https://app.rustika.co.id/api/sync/projects
+const ENDPOINT_URL = "https://GANTI-DENGAN-DOMAIN-BARU/api/sync/projects"; // mis. https://client.domainmu/api/sync/projects
 const SYNC_SECRET = "GANTI_DENGAN_NILAI_SYNC_SECRET_DARI_VERCEL";
 
 function onOpen() {
