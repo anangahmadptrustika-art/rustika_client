@@ -91,3 +91,10 @@ select cron.schedule(
 - [ ] Staff tidak melihat tab/menu Invoice.
 - [ ] Upload ke Storage tunduk pada akses proyek.
 - [ ] AI assistant menjawab (badge "Live (Claude)").
+
+---
+
+## Self-hosting (server sendiri) — cara deploy saat ini
+
+Project Vercel sudah tidak dipakai. Deploy produksi sekarang di server sendiri
+(Docker + Cloudflare Tunnel / Caddy). Panduan lengkap: **[docs/SELF_HOSTING.md](./SELF_HOSTING.md)**.
