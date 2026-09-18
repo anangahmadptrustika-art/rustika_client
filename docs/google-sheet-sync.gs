@@ -4,7 +4,7 @@
  * Cara pasang:
  *   1. Buka Sheet → Extensions → Apps Script.
  *   2. Hapus isi default, tempel seluruh file ini.
- *   3. Ganti SYNC_SECRET dengan nilai yang sama seperti env SYNC_SECRET di Vercel.
+ *   3. Ganti SYNC_SECRET dengan nilai yang sama seperti SYNC_SECRET di file .env server.
  *   4. Save → muat ulang Sheet → muncul menu "Rustika" → "Sync ke Aplikasi".
  *
  * Kolom dibaca BERDASARKAN JUDUL di baris 1 (bukan posisi), jadi aman walau
@@ -28,8 +28,8 @@
  *   - Tiap baris Progress = satu titik progres pada tanggal tsb (mengisi grafik).
  */
 
-const ENDPOINT_URL = "https://GANTI-DENGAN-DOMAIN-BARU/api/sync/projects"; // mis. https://client.domainmu/api/sync/projects
-const SYNC_SECRET = "GANTI_DENGAN_NILAI_SYNC_SECRET_DARI_VERCEL";
+const ENDPOINT_URL = "https://client.rustika.co.id/api/sync/projects";
+const SYNC_SECRET = "GANTI_DENGAN_NILAI_SYNC_SECRET_DARI_ENV_SERVER";
 
 function onOpen() {
   SpreadsheetApp.getUi()
