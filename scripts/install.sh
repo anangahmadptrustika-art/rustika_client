@@ -2,7 +2,7 @@
 # ============================================================================
 # Rustika Client — installer "sekali jalan" untuk server sendiri (Ubuntu/Debian)
 #
-#   git clone https://github.com/anangahmadptrustika-art/rustika_client.git
+#   git clone -b main https://github.com/anangahmadptrustika-art/rustika_client.git
 #   cd rustika_client
 #   bash scripts/install.sh              # mode Cloudflare Tunnel (default, di balik NAT)
 #   bash scripts/install.sh --caddy      # mode Caddy (IP publik, port 80/443 terbuka)

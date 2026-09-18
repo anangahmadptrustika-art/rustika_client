@@ -7,7 +7,7 @@
 
 Di server (Ubuntu/Debian), jalankan:
 ```bash
-git clone https://github.com/anangahmadptrustika-art/rustika_client.git && cd rustika_client && bash scripts/install.sh
+git clone -b main https://github.com/anangahmadptrustika-art/rustika_client.git && cd rustika_client && bash scripts/install.sh
 ```
 Installer akan: memasang Docker (jika belum) → menanyakan rahasia **sekali** (diketik tersembunyi) → membuat `SYNC_SECRET` → menulis `.env` (chmod 600) → build & menjalankan stack Cloudflare Tunnel → menunggu *healthy* → mengecek `/api/status` → mencetak **3 langkah dashboard** yang tersisa (Cloudflare Public Hostname, Supabase Auth URL, Apps Script) lengkap dengan nilainya.
 Opsi: `--caddy` (IP publik), `--reconfigure` (isi ulang `.env`). Update berikutnya: `bash scripts/update.sh`.
@@ -78,7 +78,7 @@ curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER && newgrp docker
 
 # Ambil kode
-git clone https://github.com/anangahmadptrustika-art/rustika_client.git
+git clone -b main https://github.com/anangahmadptrustika-art/rustika_client.git
 cd rustika_client
 cp .env.server.example .env && chmod 600 .env
 nano .env   # isi sesuai Langkah 1
