@@ -1,5 +1,9 @@
 # Deployment Guide — CLIENT RUSTIKA CONSULTANT
 
+> **Produksi sekarang self-hosted (database ikut di server sendiri)** — lihat
+> [`docs/SELF_HOSTING.md`](./SELF_HOSTING.md). Panduan di bawah adalah cara lama
+> (Supabase cloud + Vercel) dan hanya dipertahankan sebagai referensi.
+
 Panduan menghubungkan **Supabase** dan men-deploy ke **Vercel**.
 
 ## 1. Buat Project Supabase

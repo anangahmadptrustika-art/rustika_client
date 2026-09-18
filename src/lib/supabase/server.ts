@@ -1,5 +1,10 @@
 import { createServerClient, type SetAllCookies } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import {
+  AUTH_COOKIE_NAME,
+  supabaseAnonKey,
+  supabaseServerUrl,
+} from "@/lib/supabase/config";
 
 type CookiesToSet = Parameters<SetAllCookies>[0];
 
@@ -10,27 +15,24 @@ type CookiesToSet = Parameters<SetAllCookies>[0];
 export async function createClient() {
   const cookieStore = await cookies();
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet: CookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if middleware refreshes sessions.
-          }
-        },
+  return createServerClient(supabaseServerUrl(), supabaseAnonKey(), {
+    cookieOptions: { name: AUTH_COOKIE_NAME },
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
       },
-    }
-  );
+      setAll(cookiesToSet: CookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          );
+        } catch {
+          // The `setAll` method was called from a Server Component.
+          // This can be ignored if middleware refreshes sessions.
+        }
+      },
+    },
+  });
 }
 
 /**
@@ -38,9 +40,11 @@ export async function createClient() {
  * Bypasses RLS — use sparingly (admin tasks, AI indexing, webhooks).
  */
 export function createAdminClient() {
-  const { createClient: createSupabaseClient } = require("@supabase/supabase-js");
+  const {
+    createClient: createSupabaseClient,
+  } = require("@supabase/supabase-js");
   return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    supabaseServerUrl(),
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false, autoRefreshToken: false } }
   );
