@@ -3,6 +3,19 @@
 > Project Vercel sudah **terhapus** (bukan sekadar di-pause), jadi aplikasi sekarang
 > dijalankan di server sendiri. Panduan ini dari nol sampai bisa diakses client.
 
+## ⚡ Cara tercepat — 1 perintah (disarankan)
+
+Di server (Ubuntu/Debian), jalankan:
+```bash
+git clone https://github.com/anangahmadptrustika-art/rustika_client.git && cd rustika_client && bash scripts/install.sh
+```
+Installer akan: memasang Docker (jika belum) → menanyakan rahasia **sekali** (diketik tersembunyi) → membuat `SYNC_SECRET` → menulis `.env` (chmod 600) → build & menjalankan stack Cloudflare Tunnel → menunggu *healthy* → mengecek `/api/status` → mencetak **3 langkah dashboard** yang tersisa (Cloudflare Public Hostname, Supabase Auth URL, Apps Script) lengkap dengan nilainya.
+Opsi: `--caddy` (IP publik), `--reconfigure` (isi ulang `.env`). Update berikutnya: `bash scripts/update.sh`.
+
+Siapkan dulu (Langkah 1 di bawah): kunci Supabase, Cloudinary, (opsional) Anthropic, dan **token Cloudflare Tunnel**.
+
+---
+
 ## 0. Gambaran
 
 | Komponen | Sebelum | Sesudah |
