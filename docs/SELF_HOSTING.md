@@ -42,7 +42,7 @@ Isi nilainya dari sumber berikut:
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Cloudinary → **Dashboard → Product Environment** |
 | `ANTHROPIC_API_KEY` (opsional) | console.anthropic.com |
 | `SYNC_SECRET` | **Buat baru**: `openssl rand -hex 32` |
-| `APP_DOMAIN`, `NEXT_PUBLIC_SITE_URL` | domain baru, mis. `app.rustika.co.id` / `https://app.rustika.co.id` |
+| `APP_DOMAIN`, `NEXT_PUBLIC_SITE_URL` | domain baru, mis. `client.domainmu` / `https://client.domainmu` |
 | `CLOUDFLARE_TUNNEL_TOKEN` | hanya jika pakai Cloudflare Tunnel (Langkah 3A) |
 
 > ⚠️ `SUPABASE_SERVICE_ROLE_KEY` dan `CLOUDINARY_API_SECRET` adalah rahasia server.
@@ -80,7 +80,7 @@ Tanpa buka port di router, HTTPS otomatis, gratis.
 
 1. Cloudflare Dashboard → **Zero Trust → Networks → Tunnels → Create a tunnel** (Cloudflared).
 2. Salin **token**-nya ke `CLOUDFLARE_TUNNEL_TOKEN` di `.env`.
-3. Di tab **Public Hostname** tunnel: `Subdomain` = `app`, `Domain` = domainmu,
+3. Di tab **Public Hostname** tunnel: `Subdomain` = `client`, `Domain` = domainmu,
    `Service` = **HTTP** → `app:3000`  (nama service Docker, bukan localhost).
 4. Jalankan:
    ```bash
@@ -88,9 +88,9 @@ Tanpa buka port di router, HTTPS otomatis, gratis.
    ```
 
 ### 3B. Punya IP publik & bisa buka port 80/443 → **Caddy** (HTTPS Let's Encrypt otomatis)
-1. Buat DNS **A record** `app.domainmu` → IP publik server.
+1. Buat DNS **A record** `client.domainmu` → IP publik server.
 2. Buka port 80 & 443 di firewall/router ke server.
-3. Pastikan `APP_DOMAIN=app.domainmu` di `.env`.
+3. Pastikan `APP_DOMAIN=client.domainmu` di `.env`.
 4. Jalankan:
    ```bash
    docker compose --profile caddy up -d --build
@@ -113,11 +113,11 @@ atau **Caddy** dengan `reverse_proxy 127.0.0.1:3000`.
 ## 4. Konfigurasi pasca-migrasi (domain berubah)
 
 1. **Supabase → Authentication → URL Configuration**
-   - **Site URL**: `https://app.domainmu`
-   - **Redirect URLs**: tambahkan `https://app.domainmu/**`
+   - **Site URL**: `https://client.domainmu`
+   - **Redirect URLs**: tambahkan `https://client.domainmu/**`
    (Kalau ini terlewat: login berhasil tapi diarahkan ke URL lama / error redirect.)
 2. **Google Sheet → Extensions → Apps Script** (`docs/google-sheet-sync.gs`):
-   - `ENDPOINT_URL = "https://app.domainmu/api/sync/projects"`
+   - `ENDPOINT_URL = "https://client.domainmu/api/sync/projects"`
    - `SYNC_SECRET` = nilai baru yang sama dengan di `.env`.
 3. **`NEXT_PUBLIC_SITE_URL`** sudah di `.env` → dipakai untuk link/QR portal client.
 4. (Hanya jika masih pakai Supabase Storage/R2 lama & bucket-nya membatasi CORS ke
@@ -129,7 +129,7 @@ atau **Caddy** dengan `reverse_proxy 127.0.0.1:3000`.
 ## 5. Verifikasi
 
 ```bash
-curl -s https://app.domainmu/api/status      # harus JSON {"status":"ok",...}
+curl -s https://client.domainmu/api/status      # harus JSON {"status":"ok",...}
 docker compose ps                             # app: healthy
 docker compose logs -f app                    # lihat log
 ```
